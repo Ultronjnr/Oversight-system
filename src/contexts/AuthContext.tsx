@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 
 interface User {
   id: string;
@@ -27,62 +28,110 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock users for demonstration
-const mockUsers: User[] = [
-  { id: '1', email: 'employee@company.com', role: 'Employee', name: 'John Mokoena', department: 'IT' },
-  { id: '2', email: 'hod@company.com', role: 'HOD', name: 'Sarah Williams', department: 'IT' },
-  { id: '3', email: 'finance@company.com', role: 'Finance', name: 'Michael Chen', department: 'Finance' },
-  {
-    id: '4',
-    email: 'admin@company.com',
-    role: 'Admin',
-    name: 'Admin User',
-    department: 'Administration',
-    permissions: ['manage_users', 'send_emails', 'view_all_data', 'manage_roles']
-  },
-  {
-    id: '5',
-    email: 'superuser@company.com',
-    role: 'SuperUser',
-    name: 'Super Administrator',
-    department: 'System',
-    permissions: ['all_permissions', 'system_admin', 'manage_users', 'send_emails', 'view_all_data', 'manage_roles', 'manage_system']
-  },
-];
+// Supabase-only auth. No mock fallback.
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const init = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const sUser = data.session?.user;
+        if (sUser) {
+          const normalized: User = {
+            id: sUser.id,
+            email: sUser.email || '',
+            role: (sUser.user_metadata?.role as User['role']) || 'Employee',
+            name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
+            department: sUser.user_metadata?.department,
+            permissions: sUser.user_metadata?.permissions || [],
+          };
+          setUser(normalized);
+          localStorage.setItem('user', JSON.stringify(normalized));
+        } else {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) setUser(JSON.parse(storedUser));
+        }
+      } catch (error) {
+        console.warn('Auth initialization error:', error);
+        // Fallback to stored user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) setUser(JSON.parse(storedUser));
+      }
+      setIsLoading(false);
+    };
+    init();
+
+    try {
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+        const sUser = session?.user;
+        if (sUser) {
+          const normalized: User = {
+            id: sUser.id,
+            email: sUser.email || '',
+            role: (sUser.user_metadata?.role as User['role']) || 'Employee',
+            name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
+            department: sUser.user_metadata?.department,
+            permissions: sUser.user_metadata?.permissions || [],
+          };
+          setUser(normalized);
+          localStorage.setItem('user', JSON.stringify(normalized));
+        } else {
+          setUser(null);
+          localStorage.removeItem('user');
+        }
+      });
+      return () => sub.subscription.unsubscribe();
+    } catch (error) {
+      console.warn('Auth state change subscription error:', error);
+      return () => { }; // Return empty cleanup function
     }
-    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Mock login validation
-    const foundUser = mockUsers.find(u => u.email === email);
-    if (foundUser && password === 'password') {
-      setUser(foundUser);
-      localStorage.setItem('user', JSON.stringify(foundUser));
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.warn('Login error:', error);
+        setIsLoading(false);
+        return false;
+      }
+      const sUser = data.user;
+      if (!sUser) {
+        console.warn('No user in session');
+        setIsLoading(false);
+        return false;
+      }
+      const normalized: User = {
+        id: sUser.id,
+        email: sUser.email || email,
+        role: (sUser.user_metadata?.role as User['role']) || 'Employee',
+        name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
+        department: sUser.user_metadata?.department,
+        permissions: sUser.user_metadata?.permissions || [],
+      };
+      setUser(normalized);
+      localStorage.setItem('user', JSON.stringify(normalized));
       setIsLoading(false);
       return true;
+    } catch (err) {
+      console.warn('Login exception:', err);
+      setIsLoading(false);
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem('user');
-    // Redirect will be handled by the component using this context
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn('Logout error:', error);
+    }
     window.location.href = '/login';
   };
 

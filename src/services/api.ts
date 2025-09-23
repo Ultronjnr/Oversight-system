@@ -1,6 +1,5 @@
 
 // API service for backend integration
-// TODO: Replace base URL with your actual backend URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 interface Quote {
@@ -75,7 +74,7 @@ class ApiService {
     const params = new URLSearchParams();
     if (filters?.role) params.append('role', filters.role);
     if (filters?.status) params.append('status', filters.status);
-    
+
     const response = await fetch(`${API_BASE_URL}/quotes?${params}`, {
       headers: this.getAuthHeaders(),
     });

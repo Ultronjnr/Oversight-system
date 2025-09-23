@@ -3,8 +3,10 @@
  * Production-ready API integration with backend database
  */
 
+import { supabase } from '../lib/supabaseClient';
+
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || '/.netlify/functions';
 
 // API Response Types
 interface ApiResponse<T> {
@@ -92,8 +94,10 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const token = localStorage.getItem('auth_token');
-      
+      const { data } = await supabase.auth.getSession();
+      const supabaseToken = data.session?.access_token;
+      const token = supabaseToken || localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers: {
@@ -140,8 +144,10 @@ class ApiClient {
 
   async upload(endpoint: string, formData: FormData): Promise<ApiResponse<any>> {
     try {
-      const token = localStorage.getItem('auth_token');
-      
+      const { data } = await supabase.auth.getSession();
+      const supabaseToken = data.session?.access_token;
+      const token = supabaseToken || localStorage.getItem('auth_token');
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -174,11 +180,11 @@ export class ApiService {
       email,
       password,
     });
-    
+
     if (response.success && response.data.token) {
       localStorage.setItem('auth_token', response.data.token);
     }
-    
+
     return response.data;
   }
 
@@ -201,7 +207,7 @@ export class ApiService {
     dateTo?: string;
   }): Promise<PurchaseRequisition[]> {
     const queryParams = new URLSearchParams();
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);
@@ -264,7 +270,7 @@ export class ApiService {
     department?: string;
   }): Promise<any> {
     const queryParams = new URLSearchParams();
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);
@@ -300,7 +306,7 @@ export class ApiService {
 // Environment Configuration for Production
 export const getEnvironmentConfig = () => {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   return {
     apiUrl: process.env.REACT_APP_API_URL || (isDevelopment ? 'http://localhost:8000/api' : '/api'),
     isDevelopment,

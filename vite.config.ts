@@ -4,15 +4,25 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
+  // Fix for Netlify deployment - ensure assets load correctly
+  base: '/',
+  build: {
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
   server: {
     host: true, // ✅ required for LocalTunnel
-    port: 4178, // ✅ updated to 4178
+    port: 4182, // ✅ using port 4182
     allowedHosts: [
       '.loca.lt', // ✅ allow LocalTunnel subdomains
     ],
   },
   preview: {
-    port: 4178, // ✅ updated preview port
+    port: 4182, // ✅ preview also on 4182
     host: true,
     allowedHosts: [
       '.loca.lt',

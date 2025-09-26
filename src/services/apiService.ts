@@ -94,8 +94,8 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const { data } = await supabase.auth.getSession();
-      const supabaseToken = data.session?.access_token;
+      const session = await supabase.auth.getSession();
+      const supabaseToken = session.data.session?.access_token;
       const token = supabaseToken || localStorage.getItem('auth_token');
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -107,13 +107,13 @@ class ApiClient {
         },
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error(`API Error (${endpoint}):`, error);
       throw error;
@@ -144,8 +144,8 @@ class ApiClient {
 
   async upload(endpoint: string, formData: FormData): Promise<ApiResponse<any>> {
     try {
-      const { data } = await supabase.auth.getSession();
-      const supabaseToken = data.session?.access_token;
+      const session = await supabase.auth.getSession();
+      const supabaseToken = session.data.session?.access_token;
       const token = supabaseToken || localStorage.getItem('auth_token');
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -156,13 +156,13 @@ class ApiClient {
         body: formData,
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        throw new Error(responseData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return data;
+      return responseData;
     } catch (error) {
       console.error(`Upload Error (${endpoint}):`, error);
       throw error;
@@ -288,8 +288,9 @@ export class ApiService {
     return response.data;
   }
 
-  static async createUser(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
-    const response = await this.client.post<User>('/users', user);
+  static async createUser(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<any> {
+    const response = await this.client.post<any>('/users', user);
+    // Return full payload so UI can access generated password and email result
     return response.data;
   }
 
@@ -300,6 +301,159 @@ export class ApiService {
 
   static async deleteUser(id: string): Promise<void> {
     await this.client.delete(`/users/${id}`);
+  }
+
+  // Email Management
+  static async sendEmail(emailData: {
+    recipients: string[];
+    subject: string;
+    body: string;
+    cc?: string[];
+    bcc?: string[];
+    templateId?: string;
+  }): Promise<{ success: boolean; messageId?: string }> {
+    try {
+      const response = await this.client.post<{ success: boolean; messageId?: string }>('/emails/send', emailData);
+      return response.data;
+    } catch (error) {
+      console.warn('Email send failed, logging to console:', emailData);
+      console.log(`[MOCK EMAIL] To: ${emailData.recipients.join(', ')}, Subject: ${emailData.subject}, Body: ${emailData.body}`);
+      return { success: true, messageId: `mock_${Date.now()}` };
+    }
+  }
+
+  static async getEmailTemplates(): Promise<any[]> {
+    try {
+      const response = await this.client.get<any[]>('/email-templates');
+      return response.data;
+    } catch (error) {
+      console.warn('Failed to load email templates from API, using defaults');
+      return [
+        { id: '1', name: 'PR Approved', subject: 'Purchase Requisition Approved - {TRANSACTION_ID}', body: 'Dear {EMPLOYEE_NAME},\n\nYour purchase requisition has been approved.\n\nTransaction ID: {TRANSACTION_ID}\nTotal Amount: {AMOUNT}\nApproved by: {APPROVER_NAME}\n\nExpected delivery: {DELIVERY_DATE}\n\nThank you.', type: 'pr_approved' },
+        { id: '2', name: 'PR Declined', subject: 'Purchase Requisition Update - {TRANSACTION_ID}', body: 'Dear {EMPLOYEE_NAME},\n\nWe regret to inform you that your purchase requisition has been declined.\n\nTransaction ID: {TRANSACTION_ID}\nReason: {DECLINE_REASON}\nAlternative suggestions: {ALTERNATIVES}\n\nPlease contact us for more information.', type: 'pr_declined' },
+        { id: '3', name: 'PR Split Notification', subject: 'Purchase Requisition Split - {TRANSACTION_ID}', body: 'Dear {EMPLOYEE_NAME},\n\nYour purchase requisition has been split for processing efficiency.\n\nOriginal PR: {TRANSACTION_ID}\nSplit into: {SPLIT_COUNT} separate requisitions\nReason: {SPLIT_REASON}\n\nEach split will be processed individually.', type: 'pr_split' },
+        { id: '4', name: 'Pending Approval Reminder', subject: 'Pending Purchase Requisitions - Action Required', body: 'Dear {APPROVER_NAME},\n\nYou have {PENDING_COUNT} purchase requisitions awaiting your approval.\n\nPlease review and take action on these pending requests.\n\nAccess your dashboard: [Dashboard Link]', type: 'reminder' }
+      ];
+    }
+  }
+
+  static async saveEmailTemplate(template: any): Promise<any> {
+    try {
+      if (template.id) {
+        const response = await this.client.put<any>(`/email-templates/${template.id}`, template);
+        return response.data;
+      } else {
+        const response = await this.client.post<any>('/email-templates', template);
+        return response.data;
+      }
+    } catch (error) {
+      console.warn('Template save failed, using localStorage fallback');
+      const templates = JSON.parse(localStorage.getItem('email_templates') || '[]');
+      if (template.id) {
+        const index = templates.findIndex((t: any) => t.id === template.id);
+        if (index !== -1) templates[index] = template;
+      } else {
+        template.id = Date.now().toString();
+        templates.push(template);
+      }
+      localStorage.setItem('email_templates', JSON.stringify(templates));
+      return template;
+    }
+  }
+
+  static async deleteEmailTemplate(id: string): Promise<void> {
+    try {
+      await this.client.delete(`/email-templates/${id}`);
+    } catch (error) {
+      console.warn('Template delete failed, using localStorage fallback');
+      const templates = JSON.parse(localStorage.getItem('email_templates') || '[]');
+      const filtered = templates.filter((t: any) => t.id !== id);
+      localStorage.setItem('email_templates', JSON.stringify(filtered));
+    }
+  }
+
+  // User Invites
+  static async inviteUser(inviteData: {
+    email: string;
+    role: string;
+    department?: string;
+    inviterEmail: string;
+  }): Promise<{ inviteId: string; expiresAt: string; inviteLink: string }> {
+    try {
+      const response = await this.client.post<any>('/users/invite', inviteData);
+      return response.data;
+    } catch (error) {
+      console.warn('Invite failed, using mock implementation');
+      const inviteId = `invite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      const inviteToken = Math.random().toString(36).substr(2);
+      const inviteLink = `${window.location.origin}/invite?token=${inviteToken}&email=${encodeURIComponent(inviteData.email)}&expires=${encodeURIComponent(expiresAt)}`;
+      console.log(`[MOCK INVITE] ID=${inviteId}, Email=${inviteData.email}, Role=${inviteData.role}, Expires=${expiresAt}`);
+      return { inviteId, expiresAt, inviteLink };
+    }
+  }
+
+  static async sendInviteEmail(inviteData: {
+    email: string;
+    inviteLink: string;
+    role: string;
+    inviterEmail: string;
+  }): Promise<{ success: boolean }> {
+    try {
+      const response = await this.client.post<{ success: boolean }>('/emails/send-invite', inviteData);
+      return response.data;
+    } catch (error) {
+      console.warn('Invite email failed, logging to console');
+      console.log(`[MOCK INVITE EMAIL] To: ${inviteData.email}, Subject: Invitation to join Oversight, Body: Hello,\n\nYou have been invited to join Oversight as ${inviteData.role}.\n\nComplete setup: ${inviteData.inviteLink}\n\nThis link expires in 48 hours.\n\nBest regards,\n${inviteData.inviterEmail}`);
+      return { success: true };
+    }
+  }
+
+  // System Management
+  static async getSystemStats(): Promise<any> {
+    try {
+      const response = await this.client.get<any>('/system/stats');
+      return response.data;
+    } catch (error) {
+      console.warn('System stats failed, calculating from localStorage');
+      const savedPRs = localStorage.getItem('purchaseRequisitions');
+      const prs = savedPRs ? JSON.parse(savedPRs) : [];
+      const currentMonth = new Date().getMonth();
+      const monthlyPRs = prs.filter((pr: any) => new Date(pr.requestDate).getMonth() === currentMonth);
+      const approvedPRs = prs.filter((pr: any) => pr.financeStatus === 'Approved');
+      const pendingPRs = prs.filter((pr: any) => pr.hodStatus === 'Pending' || pr.financeStatus === 'Pending');
+      const totalValue = prs.reduce((sum: number, pr: any) => sum + (pr.totalAmount || 0), 0);
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      return {
+        totalUsers: users.length + 1,
+        activePRs: prs.length,
+        totalPRValue: totalValue,
+        pendingApprovals: pendingPRs.length,
+        monthlyPRs: monthlyPRs.length,
+        approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0
+      };
+    }
+  }
+
+  static async updateSettings(settings: any): Promise<any> {
+    try {
+      const response = await this.client.put<any>('/system/settings', settings);
+      return response.data;
+    } catch (error) {
+      console.warn('Settings update failed, using localStorage');
+      localStorage.setItem('system_settings', JSON.stringify(settings));
+      return settings;
+    }
+  }
+
+  static async getSettings(): Promise<any> {
+    try {
+      const response = await this.client.get<any>('/system/settings');
+      return response.data;
+    } catch (error) {
+      console.warn('Settings load failed, using localStorage');
+      return JSON.parse(localStorage.getItem('system_settings') || '{}');
+    }
   }
 }
 

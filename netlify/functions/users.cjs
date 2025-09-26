@@ -46,7 +46,6 @@ async function verifyAuth(event) {
   const authHeader = event.headers?.authorization || event.headers?.Authorization || '';
   const { user, error } = await getUserFromAuthHeader(authHeader);
   if (error) return { success: false, message: error };
-  // Normalize user role
   const role = user.user_metadata?.role || user.role || 'Employee';
   return { success: true, user: { id: user.id, email: user.email, role, name: user.user_metadata?.name || user.email } };
 }
@@ -67,7 +66,6 @@ module.exports.handler = async (event, context) => {
     const pathSegments = path.split('/').filter(Boolean);
     const id = pathSegments[pathSegments.length - 1];
 
-    // Verify authentication and permissions
     const authResult = await verifyAuth(event);
     if (!authResult.success) {
       return { statusCode: 401, headers, body: JSON.stringify(authResult) };
@@ -77,10 +75,8 @@ module.exports.handler = async (event, context) => {
       return { statusCode: 403, headers, body: JSON.stringify({ success: false, message: 'Access denied' }) };
     }
 
-    // Create a per-request client with the admin service role to bypass RLS
     const adminClient = adminSupabase || supabase;
 
-    // GET /users or GET /users/:id
     if (httpMethod === 'GET') {
       if (id && id !== 'users') {
         const { data, error } = await adminClient.from('users').select('id, email, name, role, department, permissions, status, created_at, updated_at').eq('id', id).single();
@@ -97,7 +93,6 @@ module.exports.handler = async (event, context) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, data }) };
     }
 
-    // POST /users -> create user
     if (httpMethod === 'POST') {
       const { email, password, name, role, department, permissions } = JSON.parse(event.body || '{}');
 
@@ -105,16 +100,13 @@ module.exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Missing required fields' }) };
       }
 
-      // If password not provided, generate one
       const userPassword = password || (Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-4));
 
-      // Ensure no existing user
       const { data: existing, error: existingErr } = await adminClient.from('users').select('id').eq('email', email).single();
       if (existing) {
         return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'User with this email already exists' }) };
       }
 
-      // Create auth user via admin API
       let createdAuthUserId = null;
       try {
         if (adminClient && adminClient.auth && adminClient.auth.admin && typeof adminClient.auth.admin.createUser === 'function') {
@@ -139,7 +131,6 @@ module.exports.handler = async (event, context) => {
         console.warn('Error creating auth user:', e);
       }
 
-      // Hash password for local storage (if used)
       const passwordHash = await bcrypt.hash(userPassword, 10);
 
       const { data: inserted, error: insertErr } = await adminClient.from('users').insert({
@@ -158,7 +149,6 @@ module.exports.handler = async (event, context) => {
         return { statusCode: 500, headers, body: JSON.stringify({ success: false, message: 'Failed to create user' }) };
       }
 
-      // Try send invitation email
       let emailResult = { success: false, message: 'SMTP not configured' };
       try {
         emailResult = await sendInvitationEmail(email, userPassword, name);
@@ -169,7 +159,6 @@ module.exports.handler = async (event, context) => {
       return { statusCode: 201, headers, body: JSON.stringify({ success: true, data: { user: inserted, password: userPassword }, emailSent: emailResult }) };
     }
 
-    // PUT /users/:id -> update
     if (httpMethod === 'PUT') {
       if (!id) return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Missing user id' }) };
       const updateData = JSON.parse(event.body || '{}');
@@ -184,11 +173,9 @@ module.exports.handler = async (event, context) => {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, data }) };
     }
 
-    // DELETE /users/:id -> delete
     if (httpMethod === 'DELETE') {
       if (!id) return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Missing user id' }) };
 
-      // Fetch user to find auth_user_id
       const { data: existingUser } = await adminClient.from('users').select('auth_user_id').eq('id', id).single();
       const authUserId = existingUser?.auth_user_id;
 

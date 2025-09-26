@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useRoleBasedAccess } from '../hooks/useRoleBasedAccess';
@@ -30,6 +30,7 @@ import {
   Activity,
   Calendar
 } from 'lucide-react';
+import { ApiService } from '../services/apiService';
 
 interface User {
   id: string;
@@ -38,7 +39,7 @@ interface User {
   name: string;
   department?: string;
   permissions?: string[];
-  status: 'Active' | 'Inactive' | 'Suspended';
+  status: 'Active' | 'Inactive' | 'Suspended' | 'Invited';
   lastLogin?: Date;
   createdAt: Date;
 }
@@ -76,14 +77,19 @@ const SuperAdminPanel = () => {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
   const [isTemplateEditorOpen, setIsTemplateEditorOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState({
+    smtp: { host: '', port: 587, user: '', pass: '' },
+    features: { splitPRs: true, reminders: true, notifications: true },
+    integrations: { supabaseUrl: '', supabaseKey: '' }
+  });
   
-  // New User Form
-  const [newUser, setNewUser] = useState({
-    name: '',
+  // Invite User Form
+  const [inviteForm, setInviteForm] = useState({
     email: '',
     role: 'Employee' as User['role'],
     department: '',
-    permissions: [] as string[]
+    inviterEmail: user?.email || ''
   });
 
   // Email Form
@@ -108,232 +114,238 @@ const SuperAdminPanel = () => {
       loadUsers();
       loadEmailTemplates();
       loadSystemStats();
+      loadSettings();
     }
   }, []);
 
-  const loadUsers = () => {
-    // Mock users data - in real app this would come from API
-    const mockUsers: User[] = [
-      { 
-        id: '1', 
-        email: 'employee@company.com', 
-        role: 'Employee', 
-        name: 'John Mokoena', 
-        department: 'IT',
-        status: 'Active',
-        lastLogin: new Date('2024-12-01'),
-        createdAt: new Date('2024-01-15')
-      },
-      { 
-        id: '2', 
-        email: 'hod@company.com', 
-        role: 'HOD', 
-        name: 'Sarah Williams', 
-        department: 'IT',
-        status: 'Active',
-        lastLogin: new Date('2024-12-01'),
-        createdAt: new Date('2024-01-10')
-      },
-      { 
-        id: '3', 
-        email: 'finance@company.com', 
-        role: 'Finance', 
-        name: 'Michael Chen', 
-        department: 'Finance',
-        status: 'Active',
-        lastLogin: new Date('2024-11-30'),
-        createdAt: new Date('2024-01-05')
-      },
-      { 
-        id: '4', 
-        email: 'admin@company.com', 
-        role: 'Admin', 
-        name: 'Admin User', 
-        department: 'Administration',
-        status: 'Active',
-        lastLogin: new Date('2024-12-01'),
-        createdAt: new Date('2024-01-01'),
-        permissions: ['manage_users', 'send_emails', 'view_all_data']
-      }
-    ];
-    setUsers(mockUsers);
-  };
-
-  const loadEmailTemplates = () => {
-    const mockTemplates: EmailTemplate[] = [
-      {
-        id: '1',
-        name: 'PR Approved',
-        subject: 'Purchase Requisition Approved - {TRANSACTION_ID}',
-        body: 'Dear {EMPLOYEE_NAME},\n\nYour purchase requisition has been approved.\n\nTransaction ID: {TRANSACTION_ID}\nTotal Amount: {AMOUNT}\nApproved by: {APPROVER_NAME}\n\nExpected delivery: {DELIVERY_DATE}\n\nThank you.',
-        type: 'pr_approved'
-      },
-      {
-        id: '2',
-        name: 'PR Declined',
-        subject: 'Purchase Requisition Update - {TRANSACTION_ID}',
-        body: 'Dear {EMPLOYEE_NAME},\n\nWe regret to inform you that your purchase requisition has been declined.\n\nTransaction ID: {TRANSACTION_ID}\nReason: {DECLINE_REASON}\nAlternative suggestions: {ALTERNATIVES}\n\nPlease contact us for more information.',
-        type: 'pr_declined'
-      },
-      {
-        id: '3',
-        name: 'PR Split Notification',
-        subject: 'Purchase Requisition Split - {TRANSACTION_ID}',
-        body: 'Dear {EMPLOYEE_NAME},\n\nYour purchase requisition has been split for processing efficiency.\n\nOriginal PR: {TRANSACTION_ID}\nSplit into: {SPLIT_COUNT} separate requisitions\nReason: {SPLIT_REASON}\n\nEach split will be processed individually.',
-        type: 'pr_split'
-      },
-      {
-        id: '4',
-        name: 'Pending Approval Reminder',
-        subject: 'Pending Purchase Requisitions - Action Required',
-        body: 'Dear {APPROVER_NAME},\n\nYou have {PENDING_COUNT} purchase requisitions awaiting your approval.\n\nPlease review and take action on these pending requests.\n\nAccess your dashboard: [Dashboard Link]',
-        type: 'reminder'
-      }
-    ];
-    setEmailTemplates(mockTemplates);
-  };
-
-  const loadSystemStats = () => {
-    // Mock system statistics
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    const prs = savedPRs ? JSON.parse(savedPRs) : [];
-    
-    const currentMonth = new Date().getMonth();
-    const monthlyPRs = prs.filter((pr: any) => new Date(pr.requestDate).getMonth() === currentMonth);
-    const approvedPRs = prs.filter((pr: any) => pr.financeStatus === 'Approved');
-    const pendingPRs = prs.filter((pr: any) => pr.hodStatus === 'Pending' || pr.financeStatus === 'Pending');
-    const totalValue = prs.reduce((sum: number, pr: any) => sum + (pr.totalAmount || 0), 0);
-    
-    setSystemStats({
-      totalUsers: users.length + 1, // +1 for current admin
-      activePRs: prs.length,
-      totalPRValue: totalValue,
-      pendingApprovals: pendingPRs.length,
-      monthlyPRs: monthlyPRs.length,
-      approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0
-    });
-  };
-
-  const handleAddUser = () => {
-    if (!newUser.name || !newUser.email) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
+  const loadUsers = async () => {
+    try {
+      const apiUsers = await ApiService.getUsers();
+      // Map server data shape to local shape if needed
+      const normalized = apiUsers.map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name || u.email,
+        role: u.role || 'Employee',
+        department: u.department || '',
+        permissions: u.permissions || [],
+        status: u.status || 'Active',
+        lastLogin: u.last_login ? new Date(u.last_login) : undefined,
+        createdAt: u.created_at ? new Date(u.created_at) : new Date()
+      }));
+      setUsers(normalized);
+    } catch (error) {
+      console.warn('Failed to load users from API, falling back to mock users:', error);
+      // Fallback to mock users
+      const mockUsers: User[] = [
+        { id: '1', email: 'employee@company.com', role: 'Employee', name: 'John Mokoena', department: 'IT', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-15') },
+        { id: '2', email: 'hod@company.com', role: 'HOD', name: 'Sarah Williams', department: 'IT', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-10') },
+        { id: '3', email: 'finance@company.com', role: 'Finance', name: 'Michael Chen', department: 'Finance', status: 'Active', lastLogin: new Date('2024-11-30'), createdAt: new Date('2024-01-05') },
+        { id: '4', email: 'admin@company.com', role: 'Admin', name: 'Admin User', department: 'Administration', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-01'), permissions: ['manage_users', 'send_emails', 'view_all_data'] }
+      ];
+      setUsers(mockUsers);
     }
+  };
 
-    const user: User = {
-      id: Date.now().toString(),
-      ...newUser,
-      status: 'Active',
-      createdAt: new Date()
+  const loadEmailTemplates = async () => {
+    try {
+      const templates = await ApiService.getEmailTemplates();
+      setEmailTemplates(templates);
+    } catch (error) {
+      console.error('Failed to load email templates:', error);
+      toast({ title: 'Error', description: 'Failed to load email templates.', variant: 'destructive' });
+    }
+  };
+
+  const loadSystemStats = async () => {
+    try {
+      const stats = await ApiService.getSystemStats();
+      setSystemStats(stats);
+    } catch (error) {
+      console.error('Failed to load system stats:', error);
+      // Fallback to local calculation
+      const savedPRs = localStorage.getItem('purchaseRequisitions');
+      const prs = savedPRs ? JSON.parse(savedPRs) : [];
+      const currentMonth = new Date().getMonth();
+      const monthlyPRs = prs.filter((pr: any) => new Date(pr.requestDate).getMonth() === currentMonth);
+      const approvedPRs = prs.filter((pr: any) => pr.financeStatus === 'Approved');
+      const pendingPRs = prs.filter((pr: any) => pr.hodStatus === 'Pending' || pr.financeStatus === 'Pending');
+      const totalValue = prs.reduce((sum: number, pr: any) => sum + (pr.totalAmount || 0), 0);
+      setSystemStats({ totalUsers: users.length + 1, activePRs: prs.length, totalPRValue: totalValue, pendingApprovals: pendingPRs.length, monthlyPRs: monthlyPRs.length, approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0 });
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const loadedSettings = await ApiService.getSettings();
+      setSettings(loadedSettings);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      // Keep default settings
+    }
+  };
+
+  const handleInviteUser = async () => {
+    setIsLoading(true);
+    const { email, role, department, inviterEmail } = inviteForm;
+
+    // Step 1: Validate input
+    const validRoles = ['super_admin', 'financial_manager', 'hod', 'employee', 'finance'];
+    const appRoleMap = {
+      'super_admin': 'SuperUser',
+      'financial_manager': 'Finance',
+      'hod': 'HOD',
+      'employee': 'Employee',
+      'finance': 'Finance'
     };
+    const mappedRole = appRoleMap[role as keyof typeof appRoleMap];
 
-    setUsers(prev => [...prev, user]);
-    setNewUser({
-      name: '',
-      email: '',
-      role: 'Employee',
-      department: '',
-      permissions: []
-    });
-    setIsAddUserOpen(false);
-
-    toast({
-      title: "User Added",
-      description: `${user.name} has been added successfully with login credentials sent to ${user.email}.`,
-    });
-  };
-
-  const handleSendEmail = () => {
-    if (!emailForm.recipients.length || !emailForm.subject || !emailForm.body) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: 'Invalid Email', description: 'Please enter a valid email address.', variant: 'destructive' });
+      setIsLoading(false);
+      return;
+    }
+    if (!validRoles.includes(role)) {
+      toast({ title: 'Invalid Role', description: 'Role must be one of: super_admin, financial_manager, hod, employee, finance.', variant: 'destructive' });
+      setIsLoading(false);
       return;
     }
 
-    // Mock email sending
-    toast({
-      title: "Email Sent",
-      description: `Email sent to ${emailForm.recipients.length} recipient(s).`,
-    });
+    try {
+      const inviteResult = await ApiService.inviteUser({ email, role, department, inviterEmail });
 
-    setEmailForm({
-      recipients: [],
-      subject: '',
-      body: '',
-      template: ''
-    });
-    setIsEmailComposerOpen(false);
+      await ApiService.sendInviteEmail({
+        email,
+        inviteLink: inviteResult.inviteLink,
+        role,
+        inviterEmail
+      });
+
+      // Log to console (simulate server logs)
+      console.log(`[AUDIT] Invite created: ID=${inviteResult.inviteId}, Email=${email}, Role=${role}, By=${inviterEmail}, Expires=${inviteResult.expiresAt}`);
+
+      // Update UI: Add to users list with 'Invited' status
+      const invitedUser: User = {
+        id: inviteResult.inviteId,
+        email,
+        role: mappedRole as User['role'],
+        name: email.split('@')[0], // Mock name until user completes setup
+        department,
+        status: 'Invited' as User['status'],
+        createdAt: new Date()
+      };
+      setUsers(prev => [...prev, invitedUser]);
+
+      setInviteForm({ email: '', role: 'Employee', department: '', inviterEmail });
+      setIsAddUserOpen(false);
+
+      toast({
+        title: 'User Invited',
+        description: `Invitation sent to ${email}. They will receive a link to complete setup. Expires in 48 hours.`,
+      });
+    } catch (error: any) {
+      console.error('Invite failed:', error);
+      // Mock audit log for error
+      console.log(`[AUDIT ERROR] Invite failed for ${email}: ${error.message}`);
+      toast({ title: 'Invite Failed', description: error?.message || 'Failed to send invitation', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailForm.recipients.length || !emailForm.subject || !emailForm.body) {
+      toast({ title: 'Missing Information', description: 'Please fill in all required fields.', variant: 'destructive' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await ApiService.sendEmail({
+        recipients: emailForm.recipients,
+        subject: emailForm.subject,
+        body: emailForm.body,
+        templateId: emailForm.template || undefined
+      });
+
+      toast({ title: 'Email Sent', description: `Email sent to ${emailForm.recipients.length} recipient(s).` });
+      setEmailForm({ recipients: [], subject: '', body: '', template: '' });
+      setIsEmailComposerOpen(false);
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      toast({ title: 'Send Failed', description: 'Failed to send email. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTemplateSelect = (templateId: string) => {
     const template = emailTemplates.find(t => t.id === templateId);
-    if (template) {
-      setEmailForm(prev => ({
-        ...prev,
-        subject: template.subject,
-        body: template.body,
-        template: templateId
-      }));
-    }
+    if (template) setEmailForm(prev => ({ ...prev, subject: template.subject, body: template.body, template: templateId }));
   };
 
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!templateForm.name || !templateForm.subject || !templateForm.body) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all template fields.",
-        variant: "destructive"
-      });
+      toast({ title: 'Missing Information', description: 'Please fill in all template fields.', variant: 'destructive' });
       return;
     }
 
-    const template: EmailTemplate = {
-      id: templateForm.id || Date.now().toString(),
-      ...templateForm
-    };
-
-    if (templateForm.id) {
-      setEmailTemplates(prev => prev.map(t => t.id === template.id ? template : t));
-    } else {
-      setEmailTemplates(prev => [...prev, template]);
+    setIsLoading(true);
+    try {
+      const savedTemplate = await ApiService.saveEmailTemplate(templateForm);
+      if (templateForm.id) {
+        setEmailTemplates(prev => prev.map(t => t.id === templateForm.id ? savedTemplate : t));
+        toast({ title: 'Template Updated', description: 'Email template has been updated successfully.' });
+      } else {
+        setEmailTemplates(prev => [...prev, savedTemplate]);
+        toast({ title: 'Template Created', description: 'Email template has been created successfully.' });
+      }
+      setTemplateForm({ id: '', name: '', subject: '', body: '', type: 'general' });
+      setIsTemplateEditorOpen(false);
+    } catch (error) {
+      console.error('Save template failed:', error);
+      toast({ title: 'Save Failed', description: 'Failed to save template.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
-
-    setTemplateForm({
-      id: '',
-      name: '',
-      subject: '',
-      body: '',
-      type: 'general'
-    });
-    setIsTemplateEditorOpen(false);
-
-    toast({
-      title: "Template Saved",
-      description: "Email template has been saved successfully.",
-    });
   };
 
-  const toggleUserStatus = (userId: string) => {
-    setUsers(prev => prev.map(u => 
-      u.id === userId 
-        ? { ...u, status: u.status === 'Active' ? 'Suspended' : 'Active' }
-        : u
-    ));
+  const handleSaveSettings = async () => {
+    setIsLoading(true);
+    try {
+      await ApiService.updateSettings(settings);
+      toast({ title: 'Settings Saved', description: 'System settings have been updated successfully.' });
+    } catch (error) {
+      console.error('Save settings failed:', error);
+      toast({ title: 'Save Failed', description: 'Failed to save settings.', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const deleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    toast({
-      title: "User Deleted",
-      description: "User has been removed from the system.",
-    });
+  const toggleUserStatus = async (userId: string) => {
+    try {
+      const u = users.find(x => x.id === userId);
+      if (!u) return;
+      const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
+      await ApiService.updateUser(userId, { status: newStatus } as any);
+      setUsers(prev => prev.map(p => p.id === userId ? { ...p, status: newStatus } : p));
+      toast({ title: 'User Updated', description: `User status set to ${newStatus}.` });
+    } catch (err) {
+      console.error('Toggle status failed', err);
+      toast({ title: 'Update Failed', description: 'Failed to update user status.', variant: 'destructive' });
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      await ApiService.deleteUser(userId);
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      toast({ title: 'User Deleted', description: 'User has been removed from the system.' });
+    } catch (err) {
+      console.error('Delete user failed', err);
+      toast({ title: 'Delete Failed', description: 'Failed to delete user.', variant: 'destructive' });
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -351,13 +363,12 @@ const SuperAdminPanel = () => {
       case 'Active': return 'bg-green-100 text-green-800';
       case 'Suspended': return 'bg-red-100 text-red-800';
       case 'Inactive': return 'bg-gray-100 text-gray-800';
+      case 'Invited': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `ZAR ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
-  };
+  const formatCurrency = (amount: number) => `ZAR ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
 
   if (!canManageUsers() && !canSendEmails()) {
     return (
@@ -376,104 +387,25 @@ const SuperAdminPanel = () => {
       <div className="space-y-8">
         <div className="animate-fade-in">
           <h1 className="text-3xl font-bold gradient-text">Super Admin Panel</h1>
-          <p className="text-muted-foreground">
-            Comprehensive system management, user administration, and procurement oversight
-          </p>
+          <p className="text-muted-foreground">Comprehensive system management, user administration, and procurement oversight</p>
         </div>
 
         {/* System Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 animate-fade-in-up">
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Users className="h-8 w-8 text-blue-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                  <p className="text-2xl font-bold">{systemStats.totalUsers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <ShoppingCart className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Active PRs</p>
-                  <p className="text-2xl font-bold">{systemStats.activePRs}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-purple-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                  <p className="text-xl font-bold">{formatCurrency(systemStats.totalPRValue)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Activity className="h-8 w-8 text-orange-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{systemStats.pendingApprovals}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Calendar className="h-8 w-8 text-indigo-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold">{systemStats.monthlyPRs}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-lift">
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-emerald-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Approval Rate</p>
-                  <p className="text-2xl font-bold">{systemStats.approvalRate.toFixed(1)}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><Users className="h-8 w-8 text-blue-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">Total Users</p><p className="text-2xl font-bold">{systemStats.totalUsers}</p></div></div></CardContent></Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><ShoppingCart className="h-8 w-8 text-green-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">Active PRs</p><p className="text-2xl font-bold">{systemStats.activePRs}</p></div></div></CardContent></Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><DollarSign className="h-8 w-8 text-purple-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">Total Value</p><p className="text-xl font-bold">{formatCurrency(systemStats.totalPRValue)}</p></div></div></CardContent></Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><Activity className="h-8 w-8 text-orange-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">Pending</p><p className="text-2xl font-bold">{systemStats.pendingApprovals}</p></div></div></CardContent></Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><Calendar className="h-8 w-8 text-indigo-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">This Month</p><p className="text-2xl font-bold">{systemStats.monthlyPRs}</p></div></div></CardContent></Card>
+          <Card className="glass-card hover-lift"><CardContent className="p-6"><div className="flex items-center"><TrendingUp className="h-8 w-8 text-emerald-600" /><div className="ml-4"><p className="text-sm font-medium text-muted-foreground">Approval Rate</p><p className="text-2xl font-bold">{systemStats.approvalRate.toFixed(1)}%</p></div></div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              User Management
-            </TabsTrigger>
-            <TabsTrigger value="emails" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Email Center
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Email Templates
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              System Settings
-            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2"><Users className="h-4 w-4" />User Management</TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2"><Mail className="h-4 w-4" />Email Center</TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center gap-2"><FileText className="h-4 w-4" />Email Templates</TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2"><Settings className="h-4 w-4" />System Settings</TabsTrigger>
           </TabsList>
 
           {/* User Management Tab */}
@@ -482,166 +414,88 @@ const SuperAdminPanel = () => {
               <h2 className="text-2xl font-bold">User Management</h2>
               <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
                 <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Add User
-                  </Button>
+                  <Button className="flex items-center gap-2"><UserPlus className="h-4 w-4" />Invite User</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Add New User</DialogTitle>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Invite New User</DialogTitle></DialogHeader>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
-                        <Input
-                          id="name"
-                          value={newUser.name}
-                          onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter full name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={newUser.email}
-                          onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="Enter email address"
-                        />
-                      </div>
+                      <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={inviteForm.email} onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))} placeholder="Enter invitee email" /></div>
+                      <div className="space-y-2"><Label htmlFor="role">Role</Label><Select value={inviteForm.role} onValueChange={(value: any) => setInviteForm(prev => ({ ...prev, role: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="employee">Employee</SelectItem><SelectItem value="hod">HOD</SelectItem><SelectItem value="financial_manager">Finance Manager</SelectItem><SelectItem value="finance">Finance</SelectItem>{userRole === 'SuperUser' && <SelectItem value="super_admin">Super Admin</SelectItem>}</SelectContent></Select></div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="role">Role</Label>
-                        <Select value={newUser.role} onValueChange={(value: any) => setNewUser(prev => ({ ...prev, role: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Employee">Employee</SelectItem>
-                            <SelectItem value="HOD">Head of Department</SelectItem>
-                            <SelectItem value="Finance">Finance Manager</SelectItem>
-                            {userRole === 'SuperUser' && (
-                              <>
-                                <SelectItem value="Admin">Admin</SelectItem>
-                                <SelectItem value="SuperUser">Super User</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="department">Department</Label>
-                        <Input
-                          id="department"
-                          value={newUser.department}
-                          onChange={(e) => setNewUser(prev => ({ ...prev, department: e.target.value }))}
-                          placeholder="Enter department"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department (Optional)</Label>
+                      <Input id="department" value={inviteForm.department} onChange={(e) => setInviteForm(prev => ({ ...prev, department: e.target.value }))} placeholder="Enter department" />
+                      <p className="text-xs text-muted-foreground">Inviter: {inviteForm.inviterEmail} | Expires in 48 hours</p>
                     </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleAddUser}>
-                        Add User
-                      </Button>
-                    </div>
+                    <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setIsAddUserOpen(false)}>Cancel</Button><Button onClick={handleInviteUser}>Send Invite</Button></div>
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
 
-            <Card className="glass-card">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-4 font-medium">User</th>
-                        <th className="text-left p-4 font-medium">Role</th>
-                        <th className="text-left p-4 font-medium">Department</th>
-                        <th className="text-left p-4 font-medium">Status</th>
-                        <th className="text-left p-4 font-medium">Last Login</th>
-                        <th className="text-left p-4 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map(user => (
-                        <tr key={user.id} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="p-4">
-                            <div>
-                              <div className="font-medium">{user.name}</div>
-                              <div className="text-sm text-muted-foreground">{user.email}</div>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
-                          </td>
-                          <td className="p-4">{user.department}</td>
-                          <td className="p-4">
-                            <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
-                          </td>
-                          <td className="p-4 text-sm text-muted-foreground">
-                            {user.lastLogin ? user.lastLogin.toLocaleDateString() : 'Never'}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => toggleUserStatus(user.id)}
-                                className={user.status === 'Active' ? 'text-red-600' : 'text-green-600'}
-                              >
-                                {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                className="text-red-600"
-                                onClick={() => deleteUser(user.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            <Card className="glass-card"><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full"><thead className="bg-muted/50"><tr><th className="text-left p-4 font-medium">User</th><th className="text-left p-4 font-medium">Role</th><th className="text-left p-4 font-medium">Department</th><th className="text-left p-4 font-medium">Status</th><th className="text-left p-4 font-medium">Last Login</th><th className="text-left p-4 font-medium">Actions</th></tr></thead><tbody>{users.map(user => (<tr key={user.id} className="border-b border-border/50 hover:bg-muted/30"><td className="p-4"><div><div className="font-medium">{user.name}</div><div className="text-sm text-muted-foreground">{user.email}</div></div></td><td className="p-4"><Badge className={getRoleColor(user.role)}>{user.role}</Badge></td><td className="p-4">{user.department}</td><td className="p-4"><Badge className={getStatusColor(user.status)}>{user.status}</Badge></td><td className="p-4 text-sm text-muted-foreground">{user.lastLogin ? user.lastLogin.toLocaleDateString() : 'Never'}</td><td className="p-4"><div className="flex gap-2"><Button size="sm" variant="outline"><Eye className="h-3 w-3" /></Button><Button size="sm" variant="outline" onClick={() => toggleUserStatus(user.id)} className={user.status === 'Active' ? 'text-red-600' : 'text-green-600'}>{user.status === 'Active' ? 'Suspend' : 'Activate'}</Button><Button size="sm" variant="outline" className="text-red-600" onClick={() => deleteUser(user.id)}><Trash2 className="h-3 w-3" /></Button></div></td></tr>))}</tbody></table></div></CardContent></Card>
+
           </TabsContent>
 
           {/* Email Center Tab */}
           <TabsContent value="emails" className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Email Communication Center</h2>
-              <Dialog open={isEmailComposerOpen} onOpenChange={setIsEmailComposerOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <Send className="h-4 w-4" />
-                    Compose Email
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl">
-                  <DialogHeader>
-                    <DialogTitle>Compose Email</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
+              <h2 className="text-2xl font-bold">Email Center</h2>
+              <Button onClick={() => setIsEmailComposerOpen(true)} className="flex items-center gap-2">
+                <Send className="h-4 w-4" />Compose Email
+              </Button>
+            </div>
+
+            {/* Email Composer Dialog */}
+            <Dialog open={isEmailComposerOpen} onOpenChange={setIsEmailComposerOpen}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Compose Email</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Email Template</Label>
+                      <Label>Recipients</Label>
+                      <Select onValueChange={(value) => {
+                        const user = users.find(u => u.email === value);
+                        if (user && !emailForm.recipients.includes(value)) {
+                          setEmailForm(prev => ({ ...prev, recipients: [...prev.recipients, value] }));
+                        }
+                      }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select recipients" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.filter(u => u.status === 'Active').map(user => (
+                            <SelectItem key={user.id} value={user.email}>
+                              {user.name} ({user.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {emailForm.recipients.map(email => (
+                          <Badge key={email} variant="secondary" className="flex items-center gap-1">
+                            {email}
+                            <button
+                              onClick={() => setEmailForm(prev => ({
+                                ...prev,
+                                recipients: prev.recipients.filter(r => r !== email)
+                              }))}
+                              className="ml-1 text-xs hover:text-red-500"
+                            >
+                              ×
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Templates</Label>
                       <Select value={emailForm.template} onValueChange={handleTemplateSelect}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a template (optional)" />
+                          <SelectValue placeholder="Select template (optional)" />
                         </SelectTrigger>
                         <SelectContent>
                           {emailTemplates.map(template => (
@@ -652,315 +506,338 @@ const SuperAdminPanel = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="recipients">Recipients</Label>
-                      <Select 
-                        onValueChange={(value) => {
-                          if (!emailForm.recipients.includes(value)) {
-                            setEmailForm(prev => ({ 
-                              ...prev, 
-                              recipients: [...prev.recipients, value] 
-                            }));
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select recipients" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all_users">All Users</SelectItem>
-                          <SelectItem value="all_hods">All HODs</SelectItem>
-                          <SelectItem value="all_finance">All Finance</SelectItem>
-                          <SelectItem value="all_employees">All Employees</SelectItem>
-                          {users.filter(u => u.status === 'Active').map(user => (
-                            <SelectItem key={user.id} value={user.email}>
-                              {user.name} ({user.email})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {emailForm.recipients.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {emailForm.recipients.map(email => (
-                            <Badge key={email} variant="secondary" className="flex items-center gap-1">
-                              {email}
-                              <button 
-                                onClick={() => setEmailForm(prev => ({ 
-                                  ...prev, 
-                                  recipients: prev.recipients.filter(r => r !== email) 
-                                }))}
-                                className="ml-1 hover:text-red-600"
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="subject">Subject</Label>
-                      <Input
-                        id="subject"
-                        value={emailForm.subject}
-                        onChange={(e) => setEmailForm(prev => ({ ...prev, subject: e.target.value }))}
-                        placeholder="Enter email subject"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="body">Message</Label>
-                      <Textarea
-                        id="body"
-                        rows={8}
-                        value={emailForm.body}
-                        onChange={(e) => setEmailForm(prev => ({ ...prev, body: e.target.value }))}
-                        placeholder="Enter your message..."
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setIsEmailComposerOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSendEmail}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Email
-                      </Button>
-                    </div>
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {emailTemplates.map(template => (
-                <Card key={template.id} className="glass-card hover-glow">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>{template.name}</span>
-                      <Badge variant="outline">{template.type}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <p className="text-sm"><strong>Subject:</strong> {template.subject}</p>
-                      <p className="text-sm text-muted-foreground">{template.body.substring(0, 100)}...</p>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" onClick={() => handleTemplateSelect(template.id)}>
-                        Use Template
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => {
-                        setTemplateForm(template);
-                        setIsTemplateEditorOpen(true);
-                      }}>
-                        Edit
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="subject">Subject</Label>
+                    <Input
+                      id="subject"
+                      value={emailForm.subject}
+                      onChange={(e) => setEmailForm(prev => ({ ...prev, subject: e.target.value }))}
+                      placeholder="Email subject"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="body">Message</Label>
+                    <Textarea
+                      id="body"
+                      value={emailForm.body}
+                      onChange={(e) => setEmailForm(prev => ({ ...prev, body: e.target.value }))}
+                      placeholder="Email body"
+                      rows={10}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsEmailComposerOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSendEmail} disabled={isLoading}>
+                      {isLoading ? 'Sending...' : 'Send Email'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
-          {/* Email Templates Tab */}
+          {/* Templates Tab */}
           <TabsContent value="templates" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Email Templates</h2>
+            <>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Email Templates</h2>
+                <Button onClick={() => {
+                  setTemplateForm({ id: '', name: '', subject: '', body: '', type: 'general' });
+                  setIsTemplateEditorOpen(true);
+                }}>
+                  New Template
+                </Button>
+              </div>
+
+              {/* Templates List */}
+              <Card className="glass-card">
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-4 font-medium">Name</th>
+                          <th className="text-left p-4 font-medium">Type</th>
+                          <th className="text-left p-4 font-medium">Subject Preview</th>
+                          <th className="text-left p-4 font-medium">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {emailTemplates.map(template => (
+                          <tr key={template.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-4 font-medium">{template.name}</td>
+                            <td className="p-4">
+                              <Badge variant="outline">{template.type.replace('_', ' ').toUpperCase()}</Badge>
+                            </td>
+                            <td className="p-4 max-w-md truncate" title={template.subject}>{template.subject}</td>
+                            <td className="p-4">
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setTemplateForm(template);
+                                    setIsTemplateEditorOpen(true);
+                                  }}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600"
+                                  onClick={async () => {
+                                    if (confirm(`Delete template "${template.name}"?`)) {
+                                      try {
+                                        await ApiService.deleteEmailTemplate(template.id);
+                                        setEmailTemplates(prev => prev.filter(t => t.id !== template.id));
+                                        toast({ title: 'Template Deleted', description: 'Template removed successfully.' });
+                                      } catch (error) {
+                                        console.error('Delete template failed:', error);
+                                        toast({ title: 'Delete Failed', description: 'Failed to delete template.', variant: 'destructive' });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {emailTemplates.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                              No templates found. Create your first template above.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Template Editor Dialog */}
               <Dialog open={isTemplateEditorOpen} onOpenChange={setIsTemplateEditorOpen}>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    New Template
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>{templateForm.id ? 'Edit Template' : 'Create New Template'}</DialogTitle>
+                    <DialogTitle>{templateForm.id ? 'Edit Template' : 'New Template'}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="templateName">Template Name</Label>
-                        <Input
-                          id="templateName"
-                          value={templateForm.name}
-                          onChange={(e) => setTemplateForm(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter template name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="templateType">Template Type</Label>
-                        <Select value={templateForm.type} onValueChange={(value: any) => setTemplateForm(prev => ({ ...prev, type: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pr_approved">PR Approved</SelectItem>
-                            <SelectItem value="pr_declined">PR Declined</SelectItem>
-                            <SelectItem value="pr_split">PR Split</SelectItem>
-                            <SelectItem value="reminder">Reminder</SelectItem>
-                            <SelectItem value="general">General</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="templateSubject">Subject</Label>
+                      <Label htmlFor="template-name">Template Name</Label>
                       <Input
-                        id="templateSubject"
+                        id="template-name"
+                        value={templateForm.name}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g., PR Approval Notification"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-type">Type</Label>
+                      <Select value={templateForm.type} onValueChange={(value) => setTemplateForm(prev => ({ ...prev, type: value as EmailTemplate['type'] }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pr_approved">PR Approved</SelectItem>
+                          <SelectItem value="pr_declined">PR Declined</SelectItem>
+                          <SelectItem value="pr_split">PR Split</SelectItem>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="reminder">Reminder</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="template-subject">Subject</Label>
+                      <Input
+                        id="template-subject"
                         value={templateForm.subject}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, subject: e.target.value }))}
-                        placeholder="Enter email subject with placeholders like {TRANSACTION_ID}"
+                        placeholder="Subject with placeholders like {TRANSACTION_ID}"
                       />
+                      <p className="text-xs text-muted-foreground">Use placeholders like &#123;EMPLOYEE_NAME&#125;, &#123;TRANSACTION_ID&#125;, &#123;AMOUNT&#125;</p>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="templateBody">Message Body</Label>
+                      <Label htmlFor="template-body">Body</Label>
                       <Textarea
-                        id="templateBody"
-                        rows={10}
+                        id="template-body"
                         value={templateForm.body}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, body: e.target.value }))}
-                        placeholder="Enter template body with placeholders like {EMPLOYEE_NAME}, {AMOUNT}, etc."
+                        placeholder="Email body with placeholders..."
+                        rows={12}
                       />
                     </div>
-                    
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm font-medium text-blue-800 mb-2">Available Placeholders:</p>
-                      <div className="grid grid-cols-3 gap-2 text-xs text-blue-700">
-                        <span>{'{EMPLOYEE_NAME}'}</span>
-                        <span>{'{TRANSACTION_ID}'}</span>
-                        <span>{'{AMOUNT}'}</span>
-                        <span>{'{APPROVER_NAME}'}</span>
-                        <span>{'{DELIVERY_DATE}'}</span>
-                        <span>{'{DECLINE_REASON}'}</span>
-                        <span>{'{ALTERNATIVES}'}</span>
-                        <span>{'{SPLIT_COUNT}'}</span>
-                        <span>{'{PENDING_COUNT}'}</span>
-                      </div>
-                    </div>
-                    
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => {
-                        setTemplateForm({
-                          id: '',
-                          name: '',
-                          subject: '',
-                          body: '',
-                          type: 'general'
-                        });
-                        setIsTemplateEditorOpen(false);
-                      }}>
+                      <Button variant="outline" onClick={() => setIsTemplateEditorOpen(false)}>
                         Cancel
                       </Button>
-                      <Button onClick={handleSaveTemplate}>
-                        Save Template
+                      <Button onClick={handleSaveTemplate} disabled={isLoading}>
+                        {isLoading ? 'Saving...' : (templateForm.id ? 'Update' : 'Create')}
                       </Button>
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
-            </div>
+            </>
           </TabsContent>
 
-          {/* System Settings Tab */}
+          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <h2 className="text-2xl font-bold">System Settings</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">System Settings</h2>
+              <p className="text-muted-foreground">Configure global settings, SMTP, integrations and feature flags.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* SMTP Configuration */}
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>Email Configuration</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    SMTP Configuration
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>SMTP Server</Label>
-                    <Input placeholder="smtp.company.com" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-host">SMTP Host</Label>
+                      <Input
+                        id="smtp-host"
+                        value={settings.smtp.host}
+                        onChange={(e) => setSettings(prev => ({ ...prev, smtp: { ...prev.smtp, host: e.target.value } }))}
+                        placeholder="smtp.gmail.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-port">Port</Label>
+                      <Input
+                        id="smtp-port"
+                        type="number"
+                        value={settings.smtp.port}
+                        onChange={(e) => setSettings(prev => ({ ...prev, smtp: { ...prev.smtp, port: parseInt(e.target.value) || 587 } }))}
+                        placeholder="587"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>From Email</Label>
-                    <Input placeholder="noreply@company.com" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-user">Username</Label>
+                      <Input
+                        id="smtp-user"
+                        value={settings.smtp.user}
+                        onChange={(e) => setSettings(prev => ({ ...prev, smtp: { ...prev.smtp, user: e.target.value } }))}
+                        placeholder="your-email@gmail.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtp-pass">Password</Label>
+                      <Input
+                        id="smtp-pass"
+                        type="password"
+                        value={settings.smtp.pass}
+                        onChange={(e) => setSettings(prev => ({ ...prev, smtp: { ...prev.smtp, pass: e.target.value } }))}
+                        placeholder="App password"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>SMTP Port</Label>
-                    <Input placeholder="587" type="number" />
-                  </div>
-                  <Button>Save Configuration</Button>
                 </CardContent>
               </Card>
 
+              {/* Feature Flags */}
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>Security Settings</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="h-5 w-5" />
+                    Feature Flags
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Password Policy</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select policy" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="basic">Basic (8+ characters)</SelectItem>
-                        <SelectItem value="medium">Medium (12+ chars, mixed case)</SelectItem>
-                        <SelectItem value="strong">Strong (15+ chars, symbols)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>PR Splitting</Label>
+                      <p className="text-sm text-muted-foreground">Allow splitting large PRs into smaller ones</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.features.splitPRs}
+                      onChange={(e) => setSettings(prev => ({ ...prev, features: { ...prev.features, splitPRs: e.target.checked } }))}
+                      className="rounded"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Session Timeout (minutes)</Label>
-                    <Input placeholder="60" type="number" />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Approval Reminders</Label>
+                      <p className="text-sm text-muted-foreground">Send automated reminders for pending approvals</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.features.reminders}
+                      onChange={(e) => setSettings(prev => ({ ...prev, features: { ...prev.features, reminders: e.target.checked } }))}
+                      className="rounded"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Failed Login Attempts</Label>
-                    <Input placeholder="5" type="number" />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Email Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Enable email notifications for all events</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.features.notifications}
+                      onChange={(e) => setSettings(prev => ({ ...prev, features: { ...prev.features, notifications: e.target.checked } }))}
+                      className="rounded"
+                    />
                   </div>
-                  <Button>Save Settings</Button>
                 </CardContent>
               </Card>
 
+              {/* Integrations */}
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle>Procurement Settings</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Integrations
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Auto-approval Threshold (ZAR)</Label>
-                    <Input placeholder="5000" type="number" />
+                    <Label htmlFor="supabase-url">Supabase URL</Label>
+                    <Input
+                      id="supabase-url"
+                      value={settings.integrations.supabaseUrl}
+                      onChange={(e) => setSettings(prev => ({ ...prev, integrations: { ...prev.integrations, supabaseUrl: e.target.value } }))}
+                      placeholder="https://your-project.supabase.co"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Default VAT Rate (%)</Label>
-                    <Input placeholder="15" type="number" />
+                    <Label htmlFor="supabase-key">Supabase Anon Key</Label>
+                    <Input
+                      id="supabase-key"
+                      value={settings.integrations.supabaseKey}
+                      onChange={(e) => setSettings(prev => ({ ...prev, integrations: { ...prev.integrations, supabaseKey: e.target.value } }))}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>PR Expiry Days</Label>
-                    <Input placeholder="30" type="number" />
-                  </div>
-                  <Button>Save Settings</Button>
                 </CardContent>
               </Card>
 
+              {/* Save Button */}
               <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>System Maintenance</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Button variant="outline" className="w-full">
-                    Export All Data
+                <CardContent className="pt-6">
+                  <Button onClick={handleSaveSettings} disabled={isLoading} className="w-full">
+                    {isLoading ? 'Saving...' : 'Save Settings'}
                   </Button>
-                  <Button variant="outline" className="w-full">
-                    Generate Reports
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    System Backup
-                  </Button>
-                  <Button variant="destructive" className="w-full">
-                    Clear Cache
-                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Changes will take effect immediately
+                  </p>
                 </CardContent>
               </Card>
             </div>

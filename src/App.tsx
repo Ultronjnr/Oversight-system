@@ -11,7 +11,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // comment out UI imports until alias is confirmed working
-// import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/toaster";
 // import { Toaster as Sonner } from "@/components/ui/sonner";
 // import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -37,6 +37,7 @@ const App = () => {
             <Route path="/analytics" element={<AnalyticsOverview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Toaster />
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

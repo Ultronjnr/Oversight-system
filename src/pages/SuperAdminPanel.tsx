@@ -240,6 +240,14 @@ const SuperAdminPanel = () => {
       const pendingPRs = prs.filter((pr: any) => pr.hodStatus === 'Pending' || pr.financeStatus === 'Pending');
       const totalValue = prs.reduce((sum: number, pr: any) => sum + (pr.totalAmount || 0), 0);
       setSystemStats({
+        totalUsers: 1,
+        activePRs: prs.length,
+        totalPRValue: totalValue,
+        pendingApprovals: pendingPRs.length,
+        monthlyPRs: monthlyPRs.length,
+        approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0
+      });
+    }
   };
 
   const loadSettings = async () => {
@@ -342,7 +350,7 @@ The Oversight Team`;
         department,
         status: 'Invited' as User['status'],
         createdAt: new Date()
-      });
+      };
       setUsers(prev => [...prev, invitedUser]);
 
       setInviteForm({ email: '', role: 'Employee', department: '', inviterEmail: user?.email || '' });
@@ -625,7 +633,7 @@ The Oversight Team`;
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={inviteForm.email} onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))} placeholder="Enter invitee email" /></div>
-                      <div className="space-y-2"><Label htmlFor="role">Role</Label><Select value={inviteForm.role} onValueChange={(value: any) => setInviteForm(prev => ({ ...prev, role: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="employee">Employee</SelectItem><SelectItem value="hod">HOD</SelectItem><SelectItem value="financial_manager">Finance Manager</SelectItem><SelectItem value="finance">Finance</SelectItem>{userRole === 'SuperUser' && <SelectItem value="super_admin">Super Admin</SelectItem>}</SelectContent></Select></div>
+                      <div className="space-y-2"><Label htmlFor="role">Role</Label><Select value={inviteForm.role} onValueChange={(value: any) => setInviteForm(prev => ({ ...prev, role: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Employee">Employee</SelectItem><SelectItem value="HOD">Head of Department</SelectItem><SelectItem value="Finance">Finance Manager</SelectItem><SelectItem value="Admin">Admin</SelectItem>{userRole === 'SuperUser' && <SelectItem value="SuperUser">Super User</SelectItem>}</SelectContent></Select></div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="department">Department (Optional)</Label>

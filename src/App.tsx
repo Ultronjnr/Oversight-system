@@ -7,6 +7,7 @@ import QuoteHistory from "./pages/QuoteHistory";
 import AnalyticsOverview from "./pages/AnalyticsOverview";
 import AdminPortal from "./pages/AdminPortal";
 import SuperAdminPanel from "./pages/SuperAdminPanel";
+import InviteSignup from "./pages/InviteSignup";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -27,6 +28,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/invite" element={<InviteSignup />} />
             <Route path="/employee/portal" element={<Dashboard />} />
             <Route path="/hod/portal" element={<Dashboard />} />
             <Route path="/finance/portal" element={<Dashboard />} />

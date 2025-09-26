@@ -142,32 +142,6 @@ const Login = () => {
                 )}
               </Button>
             </form>
-
-            {/* Premium Demo Accounts Card */}
-            <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100/50">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <p className="text-sm font-semibold text-gray-700">Demo Accounts</p>
-              </div>
-              <div className="space-y-2 text-xs text-gray-600">
-                <div className="flex justify-between items-center py-1">
-                  <span className="font-medium">Employee:</span>
-                  <span className="text-blue-600 font-mono">employee@company.com</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="font-medium">HOD:</span>
-                  <span className="text-blue-600 font-mono">hod@company.com</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="font-medium">Finance:</span>
-                  <span className="text-blue-600 font-mono">finance@company.com</span>
-                </div>
-                <div className="mt-3 pt-2 border-t border-blue-200/50 text-center">
-                  <span className="font-medium">Password:</span>
-                  <span className="text-blue-600 font-mono ml-2">password</span>
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

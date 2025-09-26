@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
 interface User {
@@ -28,8 +27,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Supabase-only auth. No mock fallback.
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,66 +34,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const init = async () => {
       try {
-        // Handle Supabase hash-based tokens (invite/recovery/magic link)
-        if (typeof window !== 'undefined' && window.location.hash?.includes('access_token')) {
-          const hash = window.location.hash.replace(/^#/, '');
-          const params = new URLSearchParams(hash);
-          const access_token = params.get('access_token') || undefined;
-          const refresh_token = params.get('refresh_token') || undefined;
-          if (access_token && refresh_token && (supabase as any)?.auth?.setSession) {
-            try {
-              await (supabase as any).auth.setSession({ access_token, refresh_token });
-              // Clean the hash from the URL without reloading
-              const { pathname, search } = window.location;
-              const cleanUrl = pathname + (search || '');
-              window.history.replaceState({}, document.title, cleanUrl);
-            } catch (e) {
-              console.warn('Failed to set Supabase session from hash:', e);
-            }
-          }
-        }
-
         const { data } = await supabase.auth.getSession();
         const sUser = data.session?.user;
         if (sUser) {
-          const normalized: User = {
-            id: sUser.id,
-            email: sUser.email || '',
-            role: (sUser.user_metadata?.role as User['role']) || 'Employee',
-            name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
-            department: sUser.user_metadata?.department,
-            permissions: sUser.user_metadata?.permissions || [],
-          };
-          setUser(normalized);
-          localStorage.setItem('user', JSON.stringify(normalized));
-        } else {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) setUser(JSON.parse(storedUser));
+          // Get user details from public.users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', sUser.id)
+            .single();
+
+          if (userData && !userError) {
+            const normalized: User = {
+              id: userData.id,
+              email: userData.email,
+              role: userData.role as User['role'],
+              name: userData.name,
+              department: userData.department,
+              permissions: userData.permissions || [],
+            };
+            setUser(normalized);
+            localStorage.setItem('user', JSON.stringify(normalized));
+          }
         }
       } catch (error) {
         console.warn('Auth initialization error:', error);
-        // Fallback to stored user
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) setUser(JSON.parse(storedUser));
       }
       setIsLoading(false);
     };
     init();
 
     try {
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
         const sUser = session?.user;
         if (sUser) {
-          const normalized: User = {
-            id: sUser.id,
-            email: sUser.email || '',
-            role: (sUser.user_metadata?.role as User['role']) || 'Employee',
-            name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
-            department: sUser.user_metadata?.department,
-            permissions: sUser.user_metadata?.permissions || [],
-          };
-          setUser(normalized);
-          localStorage.setItem('user', JSON.stringify(normalized));
+          // Get user details from public.users table
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', sUser.id)
+            .single();
+
+          if (userData && !userError) {
+            const normalized: User = {
+              id: userData.id,
+              email: userData.email,
+              role: userData.role as User['role'],
+              name: userData.name,
+              department: userData.department,
+              permissions: userData.permissions || [],
+            };
+            setUser(normalized);
+            localStorage.setItem('user', JSON.stringify(normalized));
+          }
         } else {
           setUser(null);
           localStorage.removeItem('user');
@@ -114,36 +104,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        console.warn('Login error:', error);
         setIsLoading(false);
         return { success: false, message: error.message || String(error) };
       }
 
       const sUser = data.user;
       if (!sUser) {
-        console.warn('No user in session');
         setIsLoading(false);
-        return {
-          success: false,
-          message:
-            'No user returned from Supabase. This may indicate the account was created without a password (invite) — ask an admin to resend an invite or use password reset.',
-        };
+        return { success: false, message: 'Authentication failed' };
       }
 
-      const normalized: User = {
-        id: sUser.id,
-        email: sUser.email || email,
-        role: (sUser.user_metadata?.role as User['role']) || 'Employee',
-        name: (sUser.user_metadata?.name as string) || (sUser.email ?? 'User'),
-        department: sUser.user_metadata?.department,
-        permissions: sUser.user_metadata?.permissions || [],
-      };
-      setUser(normalized);
-      localStorage.setItem('user', JSON.stringify(normalized));
+      // Get user details from public.users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', sUser.id)
+        .single();
+
+      if (userData && !userError) {
+        const normalized: User = {
+          id: userData.id,
+          email: userData.email,
+          role: userData.role as User['role'],
+          name: userData.name,
+          department: userData.department,
+          permissions: userData.permissions || [],
+        };
+        setUser(normalized);
+        localStorage.setItem('user', JSON.stringify(normalized));
+      } else {
+        setIsLoading(false);
+        return { success: false, message: 'User profile not found' };
+      }
+
       setIsLoading(false);
       return { success: true };
     } catch (err: any) {
-      console.warn('Login exception:', err);
       setIsLoading(false);
       return { success: false, message: err?.message || 'Login failed' };
     }

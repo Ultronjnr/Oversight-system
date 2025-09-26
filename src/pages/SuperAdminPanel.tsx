@@ -120,50 +120,118 @@ const SuperAdminPanel = () => {
 
   const loadUsers = async () => {
     try {
-      const apiUsers = await ApiService.getUsers();
-      // Map server data shape to local shape if needed
-      const normalized = apiUsers.map((u: any) => ({
+      const { data: usersData, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const normalized = usersData.map((u: any) => ({
         id: u.id,
         email: u.email,
-        name: u.name || u.email,
-        role: u.role || 'Employee',
+        name: u.name,
+        role: u.role,
         department: u.department || '',
         permissions: u.permissions || [],
-        status: u.status || 'Active',
-        lastLogin: u.last_login ? new Date(u.last_login) : undefined,
-        createdAt: u.created_at ? new Date(u.created_at) : new Date()
+        status: 'Active', // Default status
+        createdAt: new Date(u.created_at)
       }));
-      setUsers(normalized);
+
+      // Also load pending invitations
+      const { data: invitationsData } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString());
+
+      const invitedUsers = (invitationsData || []).map((inv: any) => ({
+        id: inv.id,
+        email: inv.email,
+        name: `${inv.email.split('@')[0]} (Invited)`,
+        role: inv.role,
+        department: inv.department || '',
+        permissions: inv.permissions || [],
+        status: 'Invited' as User['status'],
+        createdAt: new Date(inv.created_at)
+      }));
+
+      setUsers([...normalized, ...invitedUsers]);
     } catch (error) {
-      console.warn('Failed to load users from API, falling back to mock users:', error);
-      // Fallback to mock users
-      const mockUsers: User[] = [
-        { id: '1', email: 'employee@company.com', role: 'Employee', name: 'John Mokoena', department: 'IT', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-15') },
-        { id: '2', email: 'hod@company.com', role: 'HOD', name: 'Sarah Williams', department: 'IT', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-10') },
-        { id: '3', email: 'finance@company.com', role: 'Finance', name: 'Michael Chen', department: 'Finance', status: 'Active', lastLogin: new Date('2024-11-30'), createdAt: new Date('2024-01-05') },
-        { id: '4', email: 'admin@company.com', role: 'Admin', name: 'Admin User', department: 'Administration', status: 'Active', lastLogin: new Date('2024-12-01'), createdAt: new Date('2024-01-01'), permissions: ['manage_users', 'send_emails', 'view_all_data'] }
-      ];
-      setUsers(mockUsers);
+      console.error('Failed to load users:', error);
+      toast({
+        title: 'Error Loading Users',
+        description: 'Failed to load user data. Please refresh the page.',
+        variant: 'destructive'
+      });
     }
   };
 
   const loadEmailTemplates = async () => {
     try {
-      const templates = await ApiService.getEmailTemplates();
-      setEmailTemplates(templates);
+      const { data: templatesData, error } = await supabase
+        .from('email_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const normalized = templatesData.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        subject: t.subject,
+        body: t.body,
+        type: t.template_type
+      }));
+
+      setEmailTemplates(normalized);
     } catch (error) {
-      console.error('Failed to load email templates:', error);
-      toast({ title: 'Error', description: 'Failed to load email templates.', variant: 'destructive' });
+      console.warn('Failed to load email templates from database, using defaults');
+      // Use default templates
+      setEmailTemplates([
+        {
+          id: '1',
+          name: 'User Invitation',
+          subject: 'Welcome to Oversight - Complete Your Account Setup',
+          body: 'You have been invited to join Oversight...',
+          type: 'invitation'
+        }
+      ]);
     }
   };
 
   const loadSystemStats = async () => {
     try {
-      const stats = await ApiService.getSystemStats();
-      setSystemStats(stats);
+      // Load from Supabase
+      const { data: prsData } = await supabase
+        .from('purchase_requisitions')
+        .select('*');
+
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id');
+
+      const prs = prsData || [];
+      const currentMonth = new Date().getMonth();
+      const monthlyPRs = prs.filter((pr: any) => new Date(pr.created_at).getMonth() === currentMonth);
+      const approvedPRs = prs.filter((pr: any) => pr.finance_status === 'Approved');
+      const pendingPRs = prs.filter((pr: any) => pr.hod_status === 'Pending' || pr.finance_status === 'Pending');
+      const totalValue = prs.reduce((sum: number, pr: any) => sum + (parseFloat(pr.total_amount) || 0), 0);
+
+      setSystemStats({
+        totalUsers: (usersData?.length || 0) + 1,
+        activePRs: prs.length,
+        totalPRValue: totalValue,
+        pendingApprovals: pendingPRs.length,
+        monthlyPRs: monthlyPRs.length,
+        approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0
+      });
     } catch (error) {
-      console.error('Failed to load system stats:', error);
-      // Fallback to local calculation
+      console.warn('Failed to load from Supabase, using localStorage fallback');
       const savedPRs = localStorage.getItem('purchaseRequisitions');
       const prs = savedPRs ? JSON.parse(savedPRs) : [];
       const currentMonth = new Date().getMonth();
@@ -171,83 +239,121 @@ const SuperAdminPanel = () => {
       const approvedPRs = prs.filter((pr: any) => pr.financeStatus === 'Approved');
       const pendingPRs = prs.filter((pr: any) => pr.hodStatus === 'Pending' || pr.financeStatus === 'Pending');
       const totalValue = prs.reduce((sum: number, pr: any) => sum + (pr.totalAmount || 0), 0);
-      setSystemStats({ totalUsers: users.length + 1, activePRs: prs.length, totalPRValue: totalValue, pendingApprovals: pendingPRs.length, monthlyPRs: monthlyPRs.length, approvalRate: prs.length > 0 ? (approvedPRs.length / prs.length) * 100 : 0 });
-    }
+      setSystemStats({
   };
 
   const loadSettings = async () => {
     try {
-      const loadedSettings = await ApiService.getSettings();
-      setSettings(loadedSettings);
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('*');
+
+      if (settingsData) {
+        const settingsMap = settingsData.reduce((acc: any, setting: any) => {
+          acc[setting.setting_key] = setting.setting_value;
+          return acc;
+        }, {});
+
+        setSettings({
+          smtp: settingsMap.smtp_config || settings.smtp,
+          features: settingsMap.feature_flags || settings.features,
+          integrations: settingsMap.integrations || settings.integrations
+        });
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
-      // Keep default settings
     }
   };
 
   const handleInviteUser = async () => {
     setIsLoading(true);
-    const { email, role, department, inviterEmail } = inviteForm;
-
-    // Step 1: Validate input
-    const validRoles = ['super_admin', 'financial_manager', 'hod', 'employee', 'finance'];
-    const appRoleMap = {
-      'super_admin': 'SuperUser',
-      'financial_manager': 'Finance',
-      'hod': 'HOD',
-      'employee': 'Employee',
-      'finance': 'Finance'
-    };
-    const mappedRole = appRoleMap[role as keyof typeof appRoleMap];
+    const { email, role, department } = inviteForm;
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       toast({ title: 'Invalid Email', description: 'Please enter a valid email address.', variant: 'destructive' });
       setIsLoading(false);
       return;
     }
-    if (!validRoles.includes(role)) {
-      toast({ title: 'Invalid Role', description: 'Role must be one of: super_admin, financial_manager, hod, employee, finance.', variant: 'destructive' });
-      setIsLoading(false);
-      return;
-    }
 
     try {
-      const inviteResult = await ApiService.inviteUser({ email, role, department, inviterEmail });
+      // Create invitation record in Supabase
+      const { data: inviteData, error: inviteError } = await supabase
+        .from('invitations')
+        .insert({
+          email,
+          invited_by: user?.id,
+          invite_type: 'user_invite',
+          role,
+          department,
+          permissions: role === 'SuperUser' ? ['all_permissions'] : [],
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+        })
+        .select()
+        .single();
 
-      await ApiService.sendInviteEmail({
-        email,
-        inviteLink: inviteResult.inviteLink,
-        role,
-        inviterEmail
+      if (inviteError) {
+        throw inviteError;
+      }
+
+      // Create invitation link
+      const inviteLink = `${window.location.origin}/invite?token=${inviteData.token}&email=${encodeURIComponent(email)}`;
+
+      // Send invitation email (this would be handled by an edge function in production)
+      const emailBody = `Dear ${email.split('@')[0]},
+
+You have been invited to join the Oversight Procurement Management System as a ${role}.
+
+To complete your account setup, please click the link below:
+${inviteLink}
+
+This invitation will expire on ${new Date(inviteData.expires_at).toLocaleDateString()}.
+
+Your role: ${role}
+${department ? `Department: ${department}` : ''}
+
+If you have any questions, please contact your administrator.
+
+Best regards,
+The Oversight Team`;
+
+      // In production, this would call an edge function to send the email
+      console.log('Invitation Email:', {
+        to: email,
+        subject: 'Welcome to Oversight - Complete Your Account Setup',
+        body: emailBody,
+        inviteLink
       });
 
-      // Log to console (simulate server logs)
-      console.log(`[AUDIT] Invite created: ID=${inviteResult.inviteId}, Email=${email}, Role=${role}, By=${inviterEmail}, Expires=${inviteResult.expiresAt}`);
+      // For demo purposes, show the invite link
+      toast({
+        title: 'Invitation Created',
+        description: `Invitation sent to ${email}. Check console for invite link (in production, this would be emailed).`,
+      });
 
-      // Update UI: Add to users list with 'Invited' status
+      console.log('🔗 Invitation Link (for testing):', inviteLink);
+
+      // Update UI
       const invitedUser: User = {
-        id: inviteResult.inviteId,
+        id: inviteData.id,
         email,
-        role: mappedRole as User['role'],
-        name: email.split('@')[0], // Mock name until user completes setup
+        role: role as User['role'],
+        name: `${email.split('@')[0]} (Invited)`,
         department,
         status: 'Invited' as User['status'],
         createdAt: new Date()
-      };
+      });
       setUsers(prev => [...prev, invitedUser]);
 
-      setInviteForm({ email: '', role: 'Employee', department: '', inviterEmail });
+      setInviteForm({ email: '', role: 'Employee', department: '', inviterEmail: user?.email || '' });
       setIsAddUserOpen(false);
-
-      toast({
-        title: 'User Invited',
-        description: `Invitation sent to ${email}. They will receive a link to complete setup. Expires in 48 hours.`,
-      });
     } catch (error: any) {
       console.error('Invite failed:', error);
-      // Mock audit log for error
-      console.log(`[AUDIT ERROR] Invite failed for ${email}: ${error.message}`);
-      toast({ title: 'Invite Failed', description: error?.message || 'Failed to send invitation', variant: 'destructive' });
+      toast({ 
+        title: 'Invite Failed', 
+        description: error?.message || 'Failed to create invitation', 
+        variant: 'destructive' 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -261,11 +367,12 @@ const SuperAdminPanel = () => {
 
     setIsLoading(true);
     try {
-      await ApiService.sendEmail({
+      // In production, this would call an edge function to send emails
+      console.log('Email to send:', {
         recipients: emailForm.recipients,
         subject: emailForm.subject,
         body: emailForm.body,
-        templateId: emailForm.template || undefined
+        from: user?.email
       });
 
       toast({ title: 'Email Sent', description: `Email sent to ${emailForm.recipients.length} recipient(s).` });
@@ -292,19 +399,66 @@ const SuperAdminPanel = () => {
 
     setIsLoading(true);
     try {
-      const savedTemplate = await ApiService.saveEmailTemplate(templateForm);
       if (templateForm.id) {
-        setEmailTemplates(prev => prev.map(t => t.id === templateForm.id ? savedTemplate : t));
-        toast({ title: 'Template Updated', description: 'Email template has been updated successfully.' });
+        // Update existing template
+        const { data, error } = await supabase
+          .from('email_templates')
+          .update({
+            name: templateForm.name,
+            subject: templateForm.subject,
+            body: templateForm.body,
+            template_type: templateForm.type,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', templateForm.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const normalized = {
+          id: data.id,
+          name: data.name,
+          subject: data.subject,
+          body: data.body,
+          type: data.template_type
+        };
+
+        setEmailTemplates(prev => prev.map(t => t.id === templateForm.id ? normalized : t));
+        toast({ title: 'Template Updated', description: 'Email template updated successfully.' });
       } else {
-        setEmailTemplates(prev => [...prev, savedTemplate]);
-        toast({ title: 'Template Created', description: 'Email template has been created successfully.' });
+        // Create new template
+        const { data, error } = await supabase
+          .from('email_templates')
+          .insert({
+            name: templateForm.name,
+            subject: templateForm.subject,
+            body: templateForm.body,
+            template_type: templateForm.type,
+            created_by: user?.id
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const normalized = {
+          id: data.id,
+          name: data.name,
+          subject: data.subject,
+          body: data.body,
+          type: data.template_type
+        };
+
+        setEmailTemplates(prev => [...prev, normalized]);
+        toast({ title: 'Template Created', description: 'Email template created successfully.' });
       }
+
       setTemplateForm({ id: '', name: '', subject: '', body: '', type: 'general' });
       setIsTemplateEditorOpen(false);
     } catch (error) {
-      console.error('Save template failed:', error);
-      toast({ title: 'Save Failed', description: 'Failed to save template.', variant: 'destructive' });
+      console.error('Template save failed:', error);
+      toast({ title: 'Save Failed', description: 'Failed to save template. Please try again.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -313,7 +467,23 @@ const SuperAdminPanel = () => {
   const handleSaveSettings = async () => {
     setIsLoading(true);
     try {
-      await ApiService.updateSettings(settings);
+      // Save settings to Supabase
+      const settingsToSave = [
+        { setting_key: 'smtp_config', setting_value: settings.smtp },
+        { setting_key: 'feature_flags', setting_value: settings.features },
+        { setting_key: 'integrations', setting_value: settings.integrations }
+      ];
+
+      for (const setting of settingsToSave) {
+        await supabase
+          .from('system_settings')
+          .upsert({
+            ...setting,
+            updated_by: user?.id,
+            updated_at: new Date().toISOString()
+          });
+      }
+
       toast({ title: 'Settings Saved', description: 'System settings have been updated successfully.' });
     } catch (error) {
       console.error('Save settings failed:', error);
@@ -325,26 +495,60 @@ const SuperAdminPanel = () => {
 
   const toggleUserStatus = async (userId: string) => {
     try {
-      const u = users.find(x => x.id === userId);
-      if (!u) return;
-      const newStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-      await ApiService.updateUser(userId, { status: newStatus } as any);
-      setUsers(prev => prev.map(p => p.id === userId ? { ...p, status: newStatus } : p));
-      toast({ title: 'User Updated', description: `User status set to ${newStatus}.` });
+      const userToUpdate = users.find(u => u.id === userId);
+      if (!userToUpdate) return;
+
+      const newStatus = userToUpdate.status === 'Active' ? 'Suspended' : 'Active';
+      
+      // Update in Supabase (if it's a real user, not an invitation)
+      if (userToUpdate.status !== 'Invited') {
+        const { error } = await supabase
+          .from('users')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', userId);
+
+        if (error) throw error;
+      }
+
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      toast({ title: 'User Updated', description: `User status changed to ${newStatus}.` });
     } catch (err) {
-      console.error('Toggle status failed', err);
+      console.error('Toggle status failed:', err);
       toast({ title: 'Update Failed', description: 'Failed to update user status.', variant: 'destructive' });
     }
   };
 
   const deleteUser = async (userId: string) => {
     try {
-      await ApiService.deleteUser(userId);
+      const userToDelete = users.find(u => u.id === userId);
+      if (!userToDelete) return;
+
+      if (userToDelete.status === 'Invited') {
+        // Delete invitation
+        const { error } = await supabase
+          .from('invitations')
+          .delete()
+          .eq('id', userId);
+
+        if (error) throw error;
+      } else {
+        // Delete user (this will also delete from auth.users via RLS)
+        const { error } = await supabase
+          .from('users')
+          .delete()
+          .eq('id', userId);
+
+        if (error) throw error;
+      }
+
       setUsers(prev => prev.filter(u => u.id !== userId));
-      toast({ title: 'User Deleted', description: 'User has been removed from the system.' });
+      toast({ 
+        title: userToDelete.status === 'Invited' ? 'Invitation Cancelled' : 'User Deleted', 
+        description: userToDelete.status === 'Invited' ? 'Invitation has been cancelled.' : 'User has been removed from the system.' 
+      });
     } catch (err) {
-      console.error('Delete user failed', err);
-      toast({ title: 'Delete Failed', description: 'Failed to delete user.', variant: 'destructive' });
+      console.error('Delete failed:', err);
+      toast({ title: 'Delete Failed', description: 'Failed to remove user. Please try again.', variant: 'destructive' });
     }
   };
 

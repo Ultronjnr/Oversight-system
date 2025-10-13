@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { useRoleBasedAccess } from '../hooks/useRoleBasedAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,8 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { ShieldCheck, ServerCog, Activity, Users, Database, KeyRound, Wrench, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, ServerCog, Activity, Users, Database, KeyRound, Wrench, CheckCircle2, AlertTriangle, Mail, Repeat, Ban } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Role {
   id: string;
@@ -26,6 +30,18 @@ interface AuditLogItem {
   action: string;
   target?: string;
   status: 'success' | 'warning' | 'error';
+}
+
+interface Invitation {
+  id: string;
+  email: string;
+  role: Role['name'];
+  department?: string | null;
+  message?: string | null;
+  token: string;
+  status: 'pending' | 'accepted' | 'revoked' | 'expired';
+  expires_at: string;
+  created_at: string;
 }
 
 const initialRoles: Role[] = [
@@ -62,15 +78,146 @@ const getStatusBadge = (status: AuditLogItem['status']) => {
 
 const SuperAdminPanel = () => {
   const { userRole, canManageSystem } = useRoleBasedAccess();
+  const { user } = useAuth();
   const [roles, setRoles] = useState<Role[]>(initialRoles);
   const [search, setSearch] = useState('');
   const [flags, setFlags] = useState({ featureQuotesV2: true, maintenanceMode: false, enableAuditStreaming: true });
 
+  // Invitations state
+  const [invites, setInvites] = useState<Invitation[]>([]);
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'Employee' as Role['name'],
+    department: '',
+    message: ''
+  });
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+
   useEffect(() => {
     if (!canManageSystem()) {
       toast({ title: 'Access restricted', description: 'You do not have permission to access the Super Admin Panel.', variant: 'destructive' });
+    } else {
+      loadInvitations();
     }
   }, []);
+
+  const loadInvitations = async () => {
+    setLoadingInvites(true);
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setInvites(data as Invitation[]);
+    } catch (e) {
+      const fallback = JSON.parse(localStorage.getItem('invitations') || '[]');
+      setInvites(fallback);
+    } finally {
+      setLoadingInvites(false);
+    }
+  };
+
+  const generateToken = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+  const handleSendInvitation = async () => {
+    if (!inviteForm.email || !inviteForm.role) {
+      toast({ title: 'Missing fields', description: 'Email and invitation type are required', variant: 'destructive' });
+      return;
+    }
+    setSendingInvite(true);
+    try {
+      const token = generateToken();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const inviteLink = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
+
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('invitations')
+        .insert({
+          email: inviteForm.email,
+          role: inviteForm.role,
+          department: inviteForm.department || null,
+          message: inviteForm.message || null,
+          token,
+          status: 'pending',
+          expires_at: expiresAt
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      // Try to trigger Edge Function email (optional)
+      try {
+        await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            email: inviteForm.email,
+            role: inviteForm.role,
+            department: inviteForm.department,
+            inviteLink
+          }
+        });
+      } catch (_) {
+        // Fallback to console/log only
+        console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
+      }
+
+      setInvites(prev => [data as Invitation, ...prev]);
+      localStorage.setItem('invitations', JSON.stringify([data, ...invites]));
+
+      setInviteForm({ email: '', role: 'Employee', department: '', message: '' });
+      toast({ title: 'Invitation sent', description: `Invite link created and email attempted: ${inviteForm.email}` });
+    } catch (e: any) {
+      // Fallback local storage invite
+      const localInvite: Invitation = {
+        id: `local_${Date.now()}`,
+        email: inviteForm.email,
+        role: inviteForm.role,
+        department: inviteForm.department,
+        message: inviteForm.message,
+        token: generateToken(),
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString()
+      };
+      const next = [localInvite, ...invites];
+      setInvites(next);
+      localStorage.setItem('invitations', JSON.stringify(next));
+      toast({ title: 'Invitation created (local)', description: 'Stored locally due to network or config issue' });
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  const resendInvite = async (inv: Invitation) => {
+    const link = `${window.location.origin}/invite?token=${inv.token}&email=${encodeURIComponent(inv.email)}`;
+    try {
+      await supabase.functions.invoke('send-invitation-email', {
+        body: { email: inv.email, role: inv.role, department: inv.department, inviteLink: link }
+      });
+      toast({ title: 'Invitation resent', description: `Email resent to ${inv.email}` });
+    } catch (_) {
+      toast({ title: 'Resent (fallback)', description: link });
+    }
+  };
+
+  const revokeInvite = async (inv: Invitation) => {
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .update({ status: 'revoked', updated_at: new Date().toISOString() })
+        .eq('id', inv.id);
+      if (error) throw error;
+      setInvites(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'revoked' } as Invitation : i));
+      toast({ title: 'Invitation revoked' });
+    } catch (_) {
+      setInvites(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'revoked' } as Invitation : i));
+      localStorage.setItem('invitations', JSON.stringify(invites));
+      toast({ title: 'Invitation revoked (local)' });
+    }
+  };
 
   const filteredRoles = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -134,12 +281,127 @@ const SuperAdminPanel = () => {
           ))}
         </div>
 
-        <Tabs defaultValue="roles" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="invitations" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="invitations" className="flex items-center gap-2"><Mail className="h-4 w-4" /> Invitations</TabsTrigger>
             <TabsTrigger value="roles" className="flex items-center gap-2"><Users className="h-4 w-4" /> Roles</TabsTrigger>
             <TabsTrigger value="config" className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Config</TabsTrigger>
             <TabsTrigger value="audit" className="flex items-center gap-2"><Activity className="h-4 w-4" /> Audit</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="invitations" className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Send New Invitation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Email Address</Label>
+                    <Input
+                      value={inviteForm.email}
+                      onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="user@example.com"
+                      type="email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Invitation Type</Label>
+                    <Select value={inviteForm.role} onValueChange={(v: any) => setInviteForm(prev => ({ ...prev, role: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select invitation type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Employee">Employee</SelectItem>
+                        <SelectItem value="HOD">HOD</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
+                        <SelectItem value="SuperUser">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Department (Optional)</Label>
+                  <Input
+                    value={inviteForm.department}
+                    onChange={(e) => setInviteForm(prev => ({ ...prev, department: e.target.value }))}
+                    placeholder="e.g., IT, Finance"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Message (Optional)</Label>
+                  <Textarea
+                    value={inviteForm.message}
+                    onChange={(e) => setInviteForm(prev => ({ ...prev, message: e.target.value }))}
+                    placeholder="Add a personal message to the invitation"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleSendInvitation} disabled={sendingInvite}>
+                    <Mail className="h-4 w-4 mr-2" />
+                    {sendingInvite ? 'Sending...' : 'Send Invitation'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Manage Invitations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingInvites ? (
+                  <div className="py-8 text-center text-muted-foreground">Loading invitations...</div>
+                ) : invites.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">No invitations found</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-3">Email</th>
+                          <th className="text-left p-3">Role</th>
+                          <th className="text-left p-3">Department</th>
+                          <th className="text-left p-3">Status</th>
+                          <th className="text-left p-3">Expires</th>
+                          <th className="text-left p-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invites.map((inv) => (
+                          <tr key={inv.id} className="border-b border-border/50">
+                            <td className="p-3 font-mono text-sm">{inv.email}</td>
+                            <td className="p-3">{inv.role}</td>
+                            <td className="p-3">{inv.department || '-'}</td>
+                            <td className="p-3">
+                              {inv.status === 'pending' && <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>}
+                              {inv.status === 'accepted' && <Badge className="bg-green-100 text-green-800">Accepted</Badge>}
+                              {inv.status === 'revoked' && <Badge className="bg-red-100 text-red-800">Revoked</Badge>}
+                              {inv.status === 'expired' && <Badge className="bg-gray-100 text-gray-800">Expired</Badge>}
+                            </td>
+                            <td className="p-3 text-sm">{new Date(inv.expires_at).toLocaleDateString()}</td>
+                            <td className="p-3">
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => resendInvite(inv)}>
+                                  <Repeat className="h-3 w-3 mr-1" /> Resend
+                                </Button>
+                                {inv.status === 'pending' && (
+                                  <Button size="sm" variant="outline" className="text-red-600" onClick={() => revokeInvite(inv)}>
+                                    <Ban className="h-3 w-3 mr-1" /> Revoke
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="roles" className="space-y-6">
             <Card className="glass-card">

@@ -124,10 +124,27 @@ const InviteSignup = () => {
         throw authError;
       }
 
+      // If session/user available immediately (email confirmation disabled), create profile row
+      if (authData.user) {
+        await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: invitation.email,
+            role: invitation.role,
+            name: formData.name,
+            department: invitation.department || null,
+            permissions: invitation.permissions || []
+          })
+          .select('id')
+          .single()
+          .catch(() => undefined);
+      }
+
       // Mark invitation as accepted
       await supabase
         .from('invitations')
-        .update({ 
+        .update({
           status: 'accepted',
           updated_at: new Date().toISOString()
         })

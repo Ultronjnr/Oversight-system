@@ -22,6 +22,12 @@ const Index = () => {
           case 'Finance':
             navigate('/finance/portal');
             break;
+          case 'Admin':
+            navigate('/admin/portal');
+            break;
+          case 'SuperUser':
+            navigate('/super-admin');
+            break;
           default:
             navigate('/login');
         }

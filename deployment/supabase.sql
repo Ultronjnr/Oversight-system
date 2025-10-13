@@ -80,9 +80,9 @@ with check (auth.uid() = id);
 -- Invitations policies
 -- Allow authenticated users to read invitations (Super Admin UI can filter in app)
 drop policy if exists invitations_select_auth on public.invitations;
-create policy invitations_select_auth on public.invitations
+create policy invitations_select_public on public.invitations
 for select
-using (auth.role() = 'authenticated');
+using (status = 'pending' and expires_at > now());
 
 -- Allow authenticated users to create invitations
 drop policy if exists invitations_insert_auth on public.invitations;

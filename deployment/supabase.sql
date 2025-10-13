@@ -27,6 +27,29 @@ create table if not exists public.invitations (
   updated_at timestamp with time zone
 );
 
+-- Email templates (used by edge function)
+create table if not exists public.email_templates (
+  id uuid primary key default gen_random_uuid(),
+  template_type text not null,
+  subject text not null,
+  body text not null,
+  is_system boolean not null default false,
+  created_at timestamp with time zone not null default now()
+);
+
+create unique index if not exists email_templates_type_system_idx
+  on public.email_templates(template_type) where is_system;
+
+-- Seed default invitation template if none exists
+insert into public.email_templates (template_type, subject, body, is_system)
+select 'invitation',
+       'Welcome to Oversight - Complete Your Account Setup',
+       'Dear {USER_NAME},\n\nYou have been invited to join Oversight as a {ROLE}.\n\nPlease complete your setup using this link: {INVITATION_LINK}\nThis invitation expires on {EXPIRY_DATE}.\n\nDepartment: {DEPARTMENT}\n\nRegards,\nThe Oversight Team',
+       true
+where not exists (
+  select 1 from public.email_templates where template_type = 'invitation' and is_system = true
+);
+
 create index if not exists invitations_token_idx on public.invitations(token);
 create index if not exists invitations_email_idx on public.invitations(email);
 

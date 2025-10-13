@@ -17,16 +17,24 @@ const getEnv = (key: string) => {
   return undefined;
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('REACT_APP_SUPABASE_URL');
-const supabaseAnon = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('REACT_APP_SUPABASE_ANON_KEY');
+const supabaseUrl =
+  getEnv('VITE_SUPABASE_URL') ||
+  getEnv('NEXT_PUBLIC_SUPABASE_URL') ||
+  getEnv('REACT_APP_SUPABASE_URL');
+const supabaseAnon =
+  getEnv('VITE_SUPABASE_ANON_KEY') ||
+  getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY') ||
+  getEnv('REACT_APP_SUPABASE_ANON_KEY');
 
 // Debug: log presence (booleans) of env keys without revealing secret values
 try {
   // eslint-disable-next-line no-console
   console.log('Supabase env presence:', {
     VITE_SUPABASE_URL: !!getEnv('VITE_SUPABASE_URL'),
+    NEXT_PUBLIC_SUPABASE_URL: !!getEnv('NEXT_PUBLIC_SUPABASE_URL'),
     REACT_APP_SUPABASE_URL: !!getEnv('REACT_APP_SUPABASE_URL'),
     VITE_SUPABASE_ANON_KEY: !!getEnv('VITE_SUPABASE_ANON_KEY'),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
     REACT_APP_SUPABASE_ANON_KEY: !!getEnv('REACT_APP_SUPABASE_ANON_KEY'),
     processEnvPresent: typeof process !== 'undefined' && !!(process as any).env,
   });

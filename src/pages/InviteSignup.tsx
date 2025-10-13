@@ -124,12 +124,12 @@ const InviteSignup = () => {
         throw authError;
       }
 
-      // If session/user available immediately (email confirmation disabled), create profile row
-      if (authData.user) {
-        await supabase
+      // If a session is issued immediately (email confirmation disabled), create profile row
+      if (authData.session?.user) {
+        const { error: profileErr } = await supabase
           .from('users')
           .insert({
-            id: authData.user.id,
+            id: authData.session.user.id,
             email: invitation.email,
             role: invitation.role,
             name: formData.name,
@@ -137,8 +137,11 @@ const InviteSignup = () => {
             permissions: invitation.permissions || []
           })
           .select('id')
-          .single()
-          .catch(() => undefined);
+          .single();
+        // Non-fatal if this fails; RLS requires session which may not exist when email confirmation is on
+        if (profileErr) {
+          console.warn('Profile insert skipped or failed (likely no session yet):', profileErr.message);
+        }
       }
 
       // Mark invitation as accepted

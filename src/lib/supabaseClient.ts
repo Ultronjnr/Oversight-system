@@ -39,11 +39,11 @@ if (!supabaseUrl || !supabaseAnon) {
   // In dev without envs, we avoid throwing to keep mock working
   // eslint-disable-next-line no-console
   console.warn('Supabase env vars missing. Auth will fallback to mock if implemented.');
-  console.warn('Available env vars:', {
-    VITE_SUPABASE_URL: getEnv('VITE_SUPABASE_URL'),
-    REACT_APP_SUPABASE_URL: getEnv('REACT_APP_SUPABASE_URL'),
-    VITE_SUPABASE_ANON_KEY: getEnv('VITE_SUPABASE_ANON_KEY'),
-    REACT_APP_SUPABASE_ANON_KEY: getEnv('REACT_APP_SUPABASE_ANON_KEY'),
+  console.warn('Env var presence:', {
+    VITE_SUPABASE_URL: !!getEnv('VITE_SUPABASE_URL'),
+    REACT_APP_SUPABASE_URL: !!getEnv('REACT_APP_SUPABASE_URL'),
+    VITE_SUPABASE_ANON_KEY: !!getEnv('VITE_SUPABASE_ANON_KEY'),
+    REACT_APP_SUPABASE_ANON_KEY: !!getEnv('REACT_APP_SUPABASE_ANON_KEY'),
   });
 }
 

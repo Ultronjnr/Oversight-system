@@ -59,34 +59,40 @@ alter table public.invitations enable row level security;
 
 -- Users policies
 -- Allow users to read their own profile
-create policy if not exists users_select_own on public.users
+drop policy if exists users_select_own on public.users;
+create policy users_select_own on public.users
 for select
 using (auth.uid() = id);
 
 -- Allow users to insert their own profile row (covers immediate-session signups)
-create policy if not exists users_insert_self on public.users
+drop policy if exists users_insert_self on public.users;
+create policy users_insert_self on public.users
 for insert
 with check (auth.uid() = id);
 
 -- Allow users to update their own profile
-create policy if not exists users_update_own on public.users
+drop policy if exists users_update_own on public.users;
+create policy users_update_own on public.users
 for update
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
 -- Invitations policies
 -- Allow authenticated users to read invitations (Super Admin UI can filter in app)
-create policy if not exists invitations_select_auth on public.invitations
+drop policy if exists invitations_select_auth on public.invitations;
+create policy invitations_select_auth on public.invitations
 for select
 using (auth.role() = 'authenticated');
 
 -- Allow authenticated users to create invitations
-create policy if not exists invitations_insert_auth on public.invitations
+drop policy if exists invitations_insert_auth on public.invitations;
+create policy invitations_insert_auth on public.invitations
 for insert
 with check (auth.role() = 'authenticated');
 
 -- Allow authenticated users to update invitations
-create policy if not exists invitations_update_auth on public.invitations
+drop policy if exists invitations_update_auth on public.invitations;
+create policy invitations_update_auth on public.invitations
 for update
 using (auth.role() = 'authenticated')
 with check (auth.role() = 'authenticated');

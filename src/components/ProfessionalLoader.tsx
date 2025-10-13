@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Building2, CheckCircle2 } from 'lucide-react';
 
 interface ProfessionalLoaderProps {

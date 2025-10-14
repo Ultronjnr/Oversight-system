@@ -156,6 +156,7 @@ const SuperAdminPanel = () => {
             email: inviteForm.email,
             role: inviteForm.role,
             department: inviteForm.department,
+            inviterEmail: user?.email || 'admin@oversight.local',
             inviteLink
           }
         });
@@ -263,8 +264,8 @@ const SuperAdminPanel = () => {
     <Layout title="Super Admin Panel">
       <div className="space-y-8">
         <div className="animate-fade-in">
-          <h1 className="text-3xl font-bold gradient-text flex items-center gap-2"><ServerCog className="h-7 w-7" /> Super Admin Panel</h1>
-          <p className="text-muted-foreground">System-wide configuration, roles and permissions, and audit visibility</p>
+          <div aria-label="Super Admin Panel" className="sr-only">Super Admin Panel</div>
+          <div className="h-1 w-20 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

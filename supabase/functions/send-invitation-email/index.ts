@@ -140,7 +140,11 @@ function getDiagnosticMessage(statusCode: number, body: string): string {
 }
 
 serve(async (req) => {
-  console.log('Invitation email function called:', req.method)
+  console.log('🚀 Invitation email function called:', {
+    method: req.method,
+    url: req.url,
+    timestamp: new Date().toISOString(),
+  })
 
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -148,54 +152,94 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json()
-    console.log('Request body:', {
-      email: requestBody.email,
-      role: requestBody.role,
-      department: requestBody.department,
-      hasInviteLink: !!requestBody.inviteLink,
-    })
-
     const { email, inviteLink, role, inviterEmail, department } = requestBody
 
+    console.log('📋 Request received:', {
+      email: email ? `${email.substring(0, 5)}...` : 'missing',
+      role: role || 'missing',
+      department: department || 'not provided',
+      hasInviteLink: !!inviteLink,
+      inviterEmail: inviterEmail || 'not provided',
+    })
+
+    // Validate required fields
     if (!email || !inviteLink || !role) {
+      const missingFields = []
+      if (!email) missingFields.push('email')
+      if (!inviteLink) missingFields.push('inviteLink')
+      if (!role) missingFields.push('role')
+
+      console.error('❌ Missing required fields:', missingFields)
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing required fields: email, inviteLink, role' }),
+        JSON.stringify({
+          success: false,
+          error: `Missing required fields: ${missingFields.join(', ')}`,
+          timestamp: new Date().toISOString(),
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
 
-    // Get email template from Supabase
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const { data: template, error: templateError } = await supabaseClient
-      .from('email_templates')
-      .select('*')
-      .eq('template_type', 'invitation')
-      .eq('is_system', true)
-      .single()
-
-    if (templateError) {
-      console.warn('Failed to get email template:', templateError)
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      console.error('❌ Invalid email format:', email)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Invalid email format: ${email}`,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
     }
 
-    // Default email content
+    console.log('✅ Request validation passed')
+
+    // Try to get custom email template from Supabase
+    let template = null
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        console.log('🔍 Attempting to fetch custom email template from Supabase...')
+        const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
+
+        const { data: templateData, error: templateError } = await supabaseClient
+          .from('email_templates')
+          .select('*')
+          .eq('template_type', 'invitation')
+          .eq('is_system', true)
+          .single()
+
+        if (templateError) {
+          console.warn('⚠️  Could not fetch custom template (using default):', templateError.message)
+        } else {
+          template = templateData
+          console.log('✅ Custom email template loaded successfully')
+        }
+      } catch (error) {
+        console.warn('⚠️  Error connecting to Supabase for template:', error.message)
+      }
+    } else {
+      console.warn('⚠️  Supabase credentials not configured, using default template')
+    }
+
+    // Build email content
     let emailSubject = 'Welcome to Oversight - Complete Your Account Setup'
     let emailBody = `<html>
       <body style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
         <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <h1 style="color: #2563eb; margin-bottom: 20px;">Welcome to Oversight!</h1>
-          
+
           <p style="color: #333; font-size: 16px; line-height: 1.6;">
             Dear ${email.split('@')[0]},
           </p>
-          
+
           <p style="color: #333; font-size: 16px; line-height: 1.6;">
             You have been invited to join the <strong>Oversight Procurement Management System</strong> as a <strong>${role}</strong>.
           </p>
-          
+
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="color: #333; font-size: 16px; margin: 0 0 10px 0;">
               <strong>Complete Your Setup:</strong>
@@ -204,12 +248,12 @@ serve(async (req) => {
               Accept Invitation & Create Password
             </a>
           </div>
-          
+
           <p style="color: #666; font-size: 14px; line-height: 1.6;">
             Or copy and paste this link: <br>
             <code style="background-color: #f5f5f5; padding: 10px; display: block; word-break: break-all; margin: 10px 0;">${inviteLink}</code>
           </p>
-          
+
           <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
             <p style="color: #666; font-size: 14px; margin: 5px 0;">
               <strong>Your Role:</strong> ${role}
@@ -219,18 +263,18 @@ serve(async (req) => {
               <strong>Expires:</strong> ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
             </p>
           </div>
-          
+
           <p style="color: #666; font-size: 14px; line-height: 1.6;">
             This invitation link will expire in 7 days for security purposes.
           </p>
-          
+
           <p style="color: #666; font-size: 14px; line-height: 1.6;">
             If you have any questions, please contact your administrator:<br>
             <strong>${inviterEmail || 'admin@oversight.local'}</strong>
           </p>
-          
+
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-          
+
           <p style="color: #999; font-size: 12px; text-align: center;">
             © 2024 Oversight Procurement Management System. All rights reserved.
           </p>
@@ -238,8 +282,9 @@ serve(async (req) => {
       </body>
     </html>`
 
-    // Use custom template if available
+    // Apply custom template if available
     if (template) {
+      console.log('📝 Applying custom email template')
       emailSubject = template.subject
         .replace('{USER_NAME}', email.split('@')[0])
         .replace('{ROLE}', role)
@@ -252,43 +297,68 @@ serve(async (req) => {
         .replace('{INVITATION_LINK}', inviteLink)
         .replace('{EXPIRY_DATE}', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString())
         .replace(/\n/g, '<br>')
+    } else {
+      console.log('📝 Using default email template')
     }
 
-    console.log('Email prepared:', { to: email, subject: emailSubject })
+    console.log('📧 Email prepared:', {
+      to: email,
+      subject: emailSubject.substring(0, 50) + '...',
+      htmlLength: emailBody.length,
+    })
 
     // Send email via Resend
+    console.log('⏳ Sending email via Resend...')
     const sent = await sendWithResend(email, emailSubject, emailBody)
 
     if (sent.ok) {
-      console.log('Email sent successfully:', { email, messageId: sent.data?.id })
+      console.log('✅ SUCCESS: Email sent via Resend', {
+        email,
+        messageId: sent.data?.id,
+        timestamp: new Date().toISOString(),
+      })
       return new Response(
         JSON.stringify({
           success: true,
           provider: 'resend',
           messageId: sent.data?.id,
-          message: 'Invitation email sent successfully'
+          message: 'Invitation email sent successfully',
+          timestamp: new Date().toISOString(),
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     } else {
-      console.error('Failed to send email:', sent.error)
+      console.error('❌ FAILED: Email sending failed', {
+        email,
+        error: sent.error,
+        diagnostics: sent.diagnostics,
+      })
       return new Response(
         JSON.stringify({
           success: false,
           provider: 'resend',
           error: sent.error,
-          message: 'Failed to send invitation email'
+          diagnostics: sent.diagnostics,
+          message: 'Failed to send invitation email',
+          timestamp: new Date().toISOString(),
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       )
     }
   } catch (error: any) {
-    console.error('Invitation email function error:', error.message, error.stack)
+    console.error('❌ CRITICAL ERROR in invitation email function:', {
+      message: error.message,
+      stack: error.stack,
+      type: error.constructor?.name,
+      timestamp: new Date().toISOString(),
+    })
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
-        details: String(error)
+        details: String(error),
+        type: error.constructor?.name,
+        timestamp: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )

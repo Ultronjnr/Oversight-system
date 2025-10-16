@@ -12,9 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { ShieldCheck, ServerCog, Activity, Users, Database, KeyRound, Wrench, CheckCircle2, AlertTriangle, Mail, Repeat, Ban } from 'lucide-react';
+import { ShieldCheck, ServerCog, Activity, Users, Database, KeyRound, Wrench, CheckCircle2, AlertTriangle, Mail, Repeat, Ban, Bug } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import InvitationDebugger, { emitInvitationEvent } from '../components/InvitationDebugger';
 
 interface Role {
   id: string;
@@ -93,6 +94,7 @@ const SuperAdminPanel = () => {
   });
   const [loadingInvites, setLoadingInvites] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [showDebugger, setShowDebugger] = useState(false);
 
   useEffect(() => {
     if (!canManageSystem()) {

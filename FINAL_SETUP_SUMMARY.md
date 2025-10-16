@@ -74,8 +74,8 @@ Before inviting real users, complete these steps:
 In Supabase Dashboard → Edge Functions → Settings:
 
 Required Variables:
-- RESEND_API_KEY: re_NuxUVPnY_HvPs2w3KSbj6MV6wN8vRn4qy
-- EMAIL_FROM: Michaelmokhoro08@gmail.com
+- RESEND_API_KEY: <your_resend_api_key>
+- EMAIL_FROM: noreply@oversight.global
 
 System Variables (should auto-populate):
 - SUPABASE_URL: https://mknamvkplhusntnarcmb.supabase.co
@@ -86,11 +86,12 @@ If any are missing, add them and redeploy.
 
 ### ✅ Step 3: Verify Sender Email in Resend
 ```
-1. Go to: https://resend.com
+1. Go to: https://dashboard.resend.com
 2. Log in to your account
-3. Go to: Settings → Domains or Verified Senders
-4. Verify that Michaelmokhoro08@gmail.com is listed as verified
-5. If not, add and verify it first
+3. Go to: Settings → Domains
+4. Verify that oversight.global is listed and verified
+5. Create/use sender email: noreply@oversight.global
+6. This will be used in EMAIL_FROM environment variable
 ```
 
 ### ✅ Step 4: Set Up Super Admin User

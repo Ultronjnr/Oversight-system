@@ -6,53 +6,136 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function sendWithResend(to: string, subject: string, html: string) {
+interface ResendResponse {
+  ok: boolean
+  error?: string
+  data?: any
+  diagnostics?: {
+    apiKeyLength?: number
+    apiKeyValid?: boolean
+    fromEmailSet?: boolean
+    resendStatusCode?: number
+    resendErrorMessage?: string
+  }
+}
+
+async function sendWithResend(to: string, subject: string, html: string): Promise<ResendResponse> {
   const apiKey = Deno.env.get('RESEND_API_KEY')
-  if (!apiKey) {
-    console.error('RESEND_API_KEY not configured')
-    return { ok: false, error: 'RESEND_API_KEY not set' }
+  const from = Deno.env.get('EMAIL_FROM') || 'noreply@oversight.local'
+
+  // Diagnostic checks
+  const diagnostics = {
+    apiKeyLength: apiKey?.length || 0,
+    apiKeyValid: apiKey ? (apiKey.startsWith('re_') && apiKey.length > 20) : false,
+    fromEmailSet: !!from,
   }
 
-  const from = Deno.env.get('EMAIL_FROM') || 'noreply@oversight.local'
-  
-  console.log('Attempting to send email via Resend:', {
+  if (!apiKey) {
+    console.error('❌ RESEND_API_KEY environment variable is not set', diagnostics)
+    return {
+      ok: false,
+      error: 'RESEND_API_KEY not configured in Supabase Functions → Settings → Environment Variables',
+      diagnostics,
+    }
+  }
+
+  if (!diagnostics.apiKeyValid) {
+    console.error('❌ RESEND_API_KEY format is invalid', {
+      ...diagnostics,
+      hint: 'API key should start with "re_" and be at least 40+ characters'
+    })
+    return {
+      ok: false,
+      error: `Invalid RESEND_API_KEY format. Key length: ${apiKey.length}, starts with: ${apiKey.substring(0, 5)}...`,
+      diagnostics,
+    }
+  }
+
+  console.log('✅ Environment variables configured:', {
+    apiKeyLength: apiKey.length,
+    apiKeyPrefix: apiKey.substring(0, 10) + '...',
+    fromEmail: from,
+  })
+
+  console.log('📧 Attempting to send email via Resend:', {
     to,
     from,
     subject,
-    hasApiKey: !!apiKey,
   })
 
   try {
+    const requestBody = {
+      from,
+      to,
+      subject,
+      html,
+      reply_to: from,
+    }
+
+    console.log('📤 Making request to Resend API endpoint: https://api.resend.com/emails')
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from,
-        to,
-        subject,
-        html,
-        reply_to: Deno.env.get('EMAIL_FROM') || 'noreply@oversight.local',
-      })
+      body: JSON.stringify(requestBody),
     })
 
     const responseBody = await resp.text()
-    console.log('Resend response status:', resp.status)
-    console.log('Resend response body:', responseBody)
+    console.log('📨 Resend API response status:', resp.status)
 
     if (!resp.ok) {
-      console.error('Resend API error:', resp.status, responseBody)
-      return { ok: false, error: `Resend error ${resp.status}: ${responseBody}` }
+      console.error('❌ Resend API returned error:', {
+        status: resp.status,
+        body: responseBody,
+      })
+
+      const diagnosticMsg = getDiagnosticMessage(resp.status, responseBody)
+      diagnostics.resendStatusCode = resp.status
+      diagnostics.resendErrorMessage = diagnosticMsg
+
+      return {
+        ok: false,
+        error: diagnosticMsg,
+        diagnostics,
+      }
     }
 
     const data = JSON.parse(responseBody)
-    console.log('Email sent successfully via Resend:', data)
+    console.log('✅ Email sent successfully via Resend:', {
+      messageId: data.id,
+      to,
+      timestamp: new Date().toISOString(),
+    })
     return { ok: true, data }
   } catch (error) {
-    console.error('Resend fetch error:', error.message)
-    return { ok: false, error: error.message }
+    console.error('❌ Error communicating with Resend API:', {
+      message: error.message,
+      stack: error.stack,
+    })
+    return {
+      ok: false,
+      error: `Network error: ${error.message}`,
+      diagnostics,
+    }
+  }
+}
+
+function getDiagnosticMessage(statusCode: number, body: string): string {
+  switch (statusCode) {
+    case 401:
+      return 'RESEND_API_KEY is invalid or expired. Check Resend dashboard and update in Supabase Functions → Settings'
+    case 403:
+      return 'Sender email is not verified in Resend. Go to Resend Dashboard → Verified Domains & Senders to verify'
+    case 422:
+      return 'Invalid email format or domain issue. Check the email address and verify sender domain in Resend'
+    case 429:
+      return 'Rate limit exceeded. Too many requests to Resend API'
+    case 500:
+      return 'Resend service error. Try again in a few moments'
+    default:
+      return `Resend API error (${statusCode}): ${body.substring(0, 200)}`
   }
 }
 

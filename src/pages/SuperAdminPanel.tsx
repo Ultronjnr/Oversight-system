@@ -318,7 +318,9 @@ const SuperAdminPanel = () => {
   }
 
   return (
-    <Layout title="Super Admin Panel">
+    <>
+      <InvitationDebugger isVisible={showDebugger} onClose={() => setShowDebugger(false)} />
+      <Layout title="Super Admin Panel">
       <div className="space-y-8">
         <div className="animate-fade-in">
           <div aria-label="Super Admin Panel" className="sr-only">Super Admin Panel</div>
@@ -585,7 +587,17 @@ const SuperAdminPanel = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Button
+        onClick={() => setShowDebugger(!showDebugger)}
+        className="fixed bottom-4 left-4 gap-2 bg-purple-600 hover:bg-purple-700"
+        size="sm"
+      >
+        <Bug className="h-4 w-4" />
+        {showDebugger ? 'Close' : 'Email Debug'}
+      </Button>
     </Layout>
+    </>
   );
 };
 

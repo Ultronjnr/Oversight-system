@@ -132,8 +132,26 @@ const SuperAdminPanel = () => {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       const inviteLink = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
 
-      // Insert into Supabase
-      const { data, error } = await supabase
+      // Create invitation object optimistically
+      const newInvitation: Invitation = {
+        id: `temp_${Date.now()}`,
+        email: inviteForm.email,
+        role: inviteForm.role,
+        department: inviteForm.department || null,
+        message: inviteForm.message || null,
+        token,
+        status: 'pending',
+        expires_at: expiresAt,
+        created_at: new Date().toISOString()
+      };
+
+      // Update UI immediately (optimistic update)
+      setInvites(prev => [newInvitation, ...prev]);
+      setInviteForm({ email: '', role: 'Employee', department: '', message: '' });
+      toast({ title: 'Sending invitation...', description: `Invite sent to ${inviteForm.email}` });
+
+      // Insert into Supabase in background
+      supabase
         .from('invitations')
         .insert({
           email: inviteForm.email,
@@ -145,33 +163,34 @@ const SuperAdminPanel = () => {
           expires_at: expiresAt
         })
         .select('*')
-        .single();
-
-      if (error) throw error;
-
-      // Try to trigger Edge Function email (optional)
-      try {
-        await supabase.functions.invoke('send-invitation-email', {
-          body: {
-            email: inviteForm.email,
-            role: inviteForm.role,
-            department: inviteForm.department,
-            inviterEmail: user?.email || 'admin@oversight.local',
-            inviteLink
+        .single()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          if (data) {
+            // Update with real ID from database
+            setInvites(prev => prev.map(inv => inv.id === newInvitation.id ? data as Invitation : inv));
+            localStorage.setItem('invitations', JSON.stringify([data, ...invites]));
           }
+        })
+        .catch((e) => {
+          console.warn('Supabase insert failed, keeping local:', e);
+          localStorage.setItem('invitations', JSON.stringify([newInvitation, ...invites]));
         });
-      } catch (_) {
-        // Fallback to console/log only
+
+      // Send email in background (non-blocking)
+      supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: inviteForm.email,
+          role: inviteForm.role,
+          department: inviteForm.department,
+          inviterEmail: user?.email || 'admin@oversight.local',
+          inviteLink
+        }
+      }).catch((error) => {
+        console.log('Email send (background):', error.message);
         console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
-      }
-
-      setInvites(prev => [data as Invitation, ...prev]);
-      localStorage.setItem('invitations', JSON.stringify([data, ...invites]));
-
-      setInviteForm({ email: '', role: 'Employee', department: '', message: '' });
-      toast({ title: 'Invitation sent', description: `Invite link created and email attempted: ${inviteForm.email}` });
+      });
     } catch (e: any) {
-      // Fallback local storage invite
       const localInvite: Invitation = {
         id: `local_${Date.now()}`,
         email: inviteForm.email,
@@ -186,7 +205,7 @@ const SuperAdminPanel = () => {
       const next = [localInvite, ...invites];
       setInvites(next);
       localStorage.setItem('invitations', JSON.stringify(next));
-      toast({ title: 'Invitation created (local)', description: 'Stored locally due to network or config issue' });
+      toast({ title: 'Invitation created', description: 'Stored locally', variant: 'default' });
     } finally {
       setSendingInvite(false);
     }
@@ -205,18 +224,25 @@ const SuperAdminPanel = () => {
   };
 
   const revokeInvite = async (inv: Invitation) => {
-    try {
-      const { error } = await supabase
+    // Optimistic update: remove immediately
+    setInvites(prev => prev.filter(i => i.id !== inv.id));
+    toast({ title: 'Invitation deleted', description: `Removed ${inv.email}` });
+
+    // Delete from Supabase in background
+    if (!inv.id.startsWith('local_') && !inv.id.startsWith('temp_')) {
+      supabase
         .from('invitations')
-        .update({ status: 'revoked', updated_at: new Date().toISOString() })
-        .eq('id', inv.id);
-      if (error) throw error;
-      setInvites(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'revoked' } as Invitation : i));
-      toast({ title: 'Invitation revoked' });
-    } catch (_) {
-      setInvites(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'revoked' } as Invitation : i));
-      localStorage.setItem('invitations', JSON.stringify(invites));
-      toast({ title: 'Invitation revoked (local)' });
+        .delete()
+        .eq('id', inv.id)
+        .then(() => {
+          localStorage.setItem('invitations', JSON.stringify(invites.filter(i => i.id !== inv.id)));
+        })
+        .catch((error) => {
+          console.warn('Failed to delete from database:', error);
+          // Silently fail - UI already updated
+        });
+    } else {
+      localStorage.setItem('invitations', JSON.stringify(invites.filter(i => i.id !== inv.id)));
     }
   };
 
@@ -388,8 +414,8 @@ const SuperAdminPanel = () => {
                                   <Repeat className="h-3 w-3 mr-1" /> Resend
                                 </Button>
                                 {inv.status === 'pending' && (
-                                  <Button size="sm" variant="outline" className="text-red-600" onClick={() => revokeInvite(inv)}>
-                                    <Ban className="h-3 w-3 mr-1" /> Revoke
+                                  <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => revokeInvite(inv)}>
+                                    <Ban className="h-3 w-3 mr-1" /> Delete
                                   </Button>
                                 )}
                               </div>

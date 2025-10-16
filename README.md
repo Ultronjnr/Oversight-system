@@ -4,8 +4,8 @@
 
 ### Super Admin Credentials
 
-**Email:** `superadmin@oversight.co.za`  
-**Password:** `SuperAdmin2025!`
+**Email:** `noreply@oversight.global`
+**Password:** `SuperAdmin2025`
 
 ### Getting Started
 
@@ -25,7 +25,7 @@
 
 ### Features
 
-- ✅ **Email-based user invitations**
+- ✅ **Email-based user invitations** (via oversight.global domain)
 - ✅ **Role-based access control**
 - ✅ **Purchase requisition workflow**
 - ✅ **Split transaction functionality**

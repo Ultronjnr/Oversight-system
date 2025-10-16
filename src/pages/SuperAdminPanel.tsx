@@ -180,6 +180,13 @@ const SuperAdminPanel = () => {
         });
 
       // Send email in background (non-blocking)
+      emitInvitationEvent({
+        email: inviteForm.email,
+        role: inviteForm.role,
+        status: 'pending',
+        message: 'Sending email via Resend...'
+      });
+
       supabase.functions.invoke('send-invitation-email', {
         body: {
           email: inviteForm.email,
@@ -188,10 +195,32 @@ const SuperAdminPanel = () => {
           inviterEmail: user?.email || 'admin@oversight.local',
           inviteLink
         }
-      }).catch((error) => {
-        console.log('Email send (background):', error.message);
-        console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
-      });
+      })
+        .then((result) => {
+          console.log('Email send result:', result);
+          emitInvitationEvent({
+            email: inviteForm.email,
+            role: inviteForm.role,
+            status: 'sent',
+            message: `Email sent successfully via ${result.data?.provider || 'Resend'}`
+          });
+        })
+        .catch((error) => {
+          console.error('Email send error:', error);
+          emitInvitationEvent({
+            email: inviteForm.email,
+            role: inviteForm.role,
+            status: 'failed',
+            message: 'Failed to send email - check debug log',
+            error: error.message
+          });
+          console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
+          toast({
+            title: 'Email Send Issue',
+            description: 'Invitation created but email sending failed. Check debug log for details.',
+            variant: 'destructive'
+          });
+        });
     } catch (e: any) {
       const localInvite: Invitation = {
         id: `local_${Date.now()}`,

@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +21,12 @@ const Index = () => {
             break;
           case 'Finance':
             navigate('/finance/portal');
+            break;
+          case 'Admin':
+            navigate('/admin/portal');
+            break;
+          case 'SuperUser':
+            navigate('/super-admin');
             break;
           default:
             navigate('/login');

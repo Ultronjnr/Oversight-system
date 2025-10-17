@@ -18,10 +18,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: true, // required for LocalTunnel
     port: 4184, // explicit dev port (matches current environment)
+    // Leave HMR host/port unset so the client will connect to the same origin in the browser.
+    // Hardcoding localhost/port breaks HMR when accessed via a remote proxy (Fly/LocalTunnel/etc.).
     hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 4184,
+      protocol: 'ws'
     },
     allowedHosts: [
       '.loca.lt', // allow LocalTunnel subdomains
@@ -31,9 +31,7 @@ export default defineConfig(({ mode }) => ({
     port: 4184, // preview also on 4184
     host: true,
     hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 4184,
+      protocol: 'ws'
     },
     allowedHosts: [
       '.loca.lt',

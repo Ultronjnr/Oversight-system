@@ -1,31 +1,60 @@
+# Netlify configuration for Oversight Procurement Management System
+
 [build]
+  # Build command - uses npm to build the Vite app
   command = "npm run build"
-  functions = "netlify/functions"
+  # Publish directory - where Vite outputs the built files
   publish = "dist"
+  # Node version
+  node_version = "18"
+  # Install Python for any dependencies that might need it
+  functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "18.20.3"
-  NPM_FLAGS = "--legacy-peer-deps"
+  # Node environment for production build
+  NODE_ENV = "production"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
+# Redirect rules for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking
+    X-Frame-Options = "SAMEORIGIN"
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    # Enable XSS protection
+    X-XSS-Protection = "1; mode=block"
+    # CORS for API calls
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+
+# Cache policy for assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache policy for index.html
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Environment variables are set in Netlify UI
+# Required environment variables:
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
+# - EMAIL_FROM
+# - RESEND_API_KEY
+
+# Functions configuration (if using Netlify functions)
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
-
-[dev]
-  command = "npm run dev"
-  port = 4182
-  publish = "dist"
-
-
-
-
-

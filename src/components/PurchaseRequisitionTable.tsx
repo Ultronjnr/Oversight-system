@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -204,7 +205,7 @@ const PurchaseRequisitionTable = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {purchaseRequisitions.map((pr) => {
+                  {purchaseRequisitions.map((pr, index) => {
                     const docInfo = getDocumentInfo(pr);
                     
                     return (

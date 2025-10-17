@@ -1,3 +1,4 @@
+import React from 'react';
 import { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';

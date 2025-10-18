@@ -132,7 +132,20 @@ const SuperAdminPanel = () => {
     try {
       const token = generateToken();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      const inviteLink = `${window.location.origin}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
+
+      // Determine the correct domain for invitation links
+      const hostname = window.location.hostname;
+      const isDevelopment = hostname.includes('fly.dev') || hostname.includes('localhost');
+      const isProduction = hostname === 'oversight.global' || hostname.includes('oversight.global');
+
+      let baseDomain = window.location.origin; // fallback
+      if (isProduction) {
+        baseDomain = 'https://oversight.global';
+      } else if (hostname.includes('fly.dev')) {
+        baseDomain = `https://${hostname}`;
+      }
+
+      const inviteLink = `${baseDomain}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
 
       // Create invitation object optimistically
       const newInvitation: Invitation = {

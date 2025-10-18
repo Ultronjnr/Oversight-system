@@ -256,7 +256,18 @@ const SuperAdminPanel = () => {
   };
 
   const resendInvite = async (inv: Invitation) => {
-    const link = `${window.location.origin}/invite?token=${inv.token}&email=${encodeURIComponent(inv.email)}`;
+    // Determine the correct domain for invitation links
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'oversight.global' || hostname.includes('oversight.global');
+
+    let baseDomain = window.location.origin; // fallback
+    if (isProduction) {
+      baseDomain = 'https://oversight.global';
+    } else if (hostname.includes('fly.dev')) {
+      baseDomain = `https://${hostname}`;
+    }
+
+    const link = `${baseDomain}/invite?token=${inv.token}&email=${encodeURIComponent(inv.email)}`;
     try {
       await supabase.functions.invoke('send-invitation-email', {
         body: { email: inv.email, role: inv.role, department: inv.department, inviteLink: link }

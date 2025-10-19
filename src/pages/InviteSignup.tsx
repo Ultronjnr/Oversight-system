@@ -41,71 +41,106 @@ const InviteSignup = () => {
 
   const verifyInvitation = async () => {
     try {
-      console.log('🔍 Verifying invitation:', { token, email });
+      if (!token || !email) {
+        console.error('❌ Missing token or email');
+        toast({
+          title: 'Invalid Link',
+          description: 'Invitation link is missing token or email.',
+          variant: 'destructive'
+        });
+        navigate('/login');
+        return;
+      }
 
-      // Query invitations table directly with service role key
-      // If RLS is enabled, use unauthenticated user's perspective
-      const now = new Date().toISOString();
+      console.log('🔍 Verifying invitation:', {
+        token: token.substring(0, 10) + '...',
+        email: email.substring(0, 5) + '...'
+      });
+
+      const now = new Date();
+      console.log('📅 Current time (ISO):', now.toISOString());
 
       const { data, error } = await supabase
         .from('invitations')
-        .select('*')
+        .select('id, email, token, role, department, status, expires_at, created_at')
         .eq('token', token)
         .eq('email', email)
         .eq('status', 'pending')
-        .gt('expires_at', now)
         .single();
 
-      console.log('📋 Invitation query result:', { data, error });
+      console.log('📋 Invitation query result:', {
+        hasData: !!data,
+        error: error?.message,
+        errorCode: error?.code
+      });
 
       if (error) {
-        console.error('❌ Query error:', error.message, error.code);
+        console.error('❌ Database query error:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
 
-        // If RLS is blocking, try to give a better error message
-        if (error.code === 'PGRST116') {
-          console.error('Invitation not found with token/email/status criteria');
-        } else if (error.message.includes('row level security')) {
-          console.error('RLS policy is blocking the query - this should be allowed for public invites');
-        }
-
+        // Show error to user
         toast({
           title: 'Invalid Invitation',
           description: 'This invitation link is invalid or has expired.',
           variant: 'destructive'
         });
-        navigate('/login');
+
+        // Redirect after a brief delay so user sees the error
+        setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
       if (!data) {
-        console.error('❌ No invitation found');
+        console.error('❌ No invitation found matching criteria');
         toast({
           title: 'Invalid Invitation',
           description: 'This invitation link is invalid or has expired.',
           variant: 'destructive'
         });
-        navigate('/login');
+        setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
-      console.log('✅ Invitation verified:', {
+      // Verify expiry date
+      const expiresAt = new Date(data.expires_at);
+      if (expiresAt < now) {
+        console.error('❌ Invitation has expired:', { expiresAt, now });
+        toast({
+          title: 'Invitation Expired',
+          description: `This invitation expired on ${expiresAt.toLocaleDateString()}.`,
+          variant: 'destructive'
+        });
+        setTimeout(() => navigate('/login'), 2000);
+        return;
+      }
+
+      console.log('✅ Invitation verified successfully:', {
         id: data.id,
         email: data.email,
         role: data.role,
         department: data.department,
         status: data.status,
-        expires_at: data.expires_at
+        expiresAt: expiresAt.toLocaleDateString()
       });
 
       setInvitation(data);
     } catch (error: any) {
-      console.error('❌ Error verifying invitation:', error);
+      console.error('❌ Unexpected error verifying invitation:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+
       toast({
         title: 'Error',
-        description: 'Failed to verify invitation. Please try again.',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive'
       });
-      navigate('/login');
+      setTimeout(() => navigate('/login'), 2000);
     }
   };
 

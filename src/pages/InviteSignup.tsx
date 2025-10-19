@@ -67,68 +67,56 @@ const InviteSignup = () => {
         console.error('❌ Missing token or email');
         toast({
           title: 'Invalid Link',
-          description: 'Invitation link is missing token or email.',
+          description: 'Invitation link is missing required parameters.',
           variant: 'destructive'
         });
         navigate('/login');
         return;
       }
 
-      console.log('🔍 Verifying invitation:', {
+      console.log('🔍 Verifying invitation via Edge Function:', {
         token: token.substring(0, 10) + '...',
         email: email.substring(0, 5) + '...'
       });
 
-      const now = new Date();
-      console.log('📅 Current time (ISO):', now.toISOString());
-
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('id, email, token, role, department, status, expires_at, created_at')
-        .eq('token', token)
-        .eq('email', email)
-        .eq('status', 'pending')
-        .single();
-
-      console.log('📋 Invitation query result:', {
-        hasData: !!data,
-        error: error?.message,
-        errorCode: error?.code
+      // Call Edge Function which uses service role key (bypasses RLS)
+      const { data: responseData, error: functionError } = await supabase.functions.invoke('verify-invitation', {
+        body: { token, email }
       });
 
-      if (error) {
-        console.error('❌ Database query error:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
+      console.log('📡 Edge Function response:', {
+        success: responseData?.success,
+        error: functionError?.message,
+        hasData: !!responseData?.data
+      });
 
-        // Show error to user
+      if (functionError) {
+        console.error('❌ Edge Function error:', functionError.message);
         toast({
-          title: 'Invalid Invitation',
-          description: 'This invitation link is invalid or has expired.',
-          variant: 'destructive'
-        });
-
-        // Redirect after a brief delay so user sees the error
-        setTimeout(() => navigate('/login'), 2000);
-        return;
-      }
-
-      if (!data) {
-        console.error('❌ No invitation found matching criteria');
-        toast({
-          title: 'Invalid Invitation',
-          description: 'This invitation link is invalid or has expired.',
+          title: 'Verification Failed',
+          description: 'Could not verify invitation. Please check the link and try again.',
           variant: 'destructive'
         });
         setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
-      // Verify expiry date
-      const expiresAt = new Date(data.expires_at);
+      if (!responseData?.success || !responseData?.data) {
+        console.error('❌ Invitation verification failed:', responseData?.error);
+        toast({
+          title: 'Invalid Invitation',
+          description: responseData?.error || 'This invitation link is invalid or has expired.',
+          variant: 'destructive'
+        });
+        setTimeout(() => navigate('/login'), 2000);
+        return;
+      }
+
+      const invitationData = responseData.data;
+
+      // Verify expiry date client-side as backup
+      const expiresAt = new Date(invitationData.expires_at);
+      const now = new Date();
       if (expiresAt < now) {
         console.error('❌ Invitation has expired:', { expiresAt, now });
         toast({
@@ -141,15 +129,15 @@ const InviteSignup = () => {
       }
 
       console.log('✅ Invitation verified successfully:', {
-        id: data.id,
-        email: data.email,
-        role: data.role,
-        department: data.department,
-        status: data.status,
+        id: invitationData.id,
+        email: invitationData.email,
+        role: invitationData.role,
+        department: invitationData.department,
+        status: invitationData.status,
         expiresAt: expiresAt.toLocaleDateString()
       });
 
-      setInvitation(data);
+      setInvitation(invitationData);
     } catch (error: any) {
       console.error('❌ Unexpected error verifying invitation:', {
         message: error.message,

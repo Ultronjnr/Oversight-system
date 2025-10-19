@@ -16,34 +16,16 @@ export default defineConfig(({ mode }) => ({
     },
   },
   server: {
-    host: true, // required for LocalTunnel
-    port: 4184, // explicit dev port (matches current environment)
-    // HMR configuration for remote deployments
-    // Detect if we're on HTTPS and use WSS, otherwise use WS
-    hmr: {
-      protocol: 'wss', // Use WSS (secure WebSocket) for HTTPS deployments
-      host: undefined, // Let browser auto-detect the host from current origin
-      port: 443, // Use standard HTTPS port for WSS
-    },
-    allowedHosts: [
-      '.loca.lt', // allow LocalTunnel subdomains
-      '.fly.dev', // allow fly.dev deployments
-      'oversight.global', // allow oversight.global domain
-    ],
+    host: '0.0.0.0',
+    port: 4184,
+    allowedHosts: 'all',
+    // Disable HMR to avoid WebSocket issues on HTTPS
+    hmr: false,
   },
   preview: {
-    port: 4184, // preview also on 4184
-    host: true,
-    hmr: {
-      protocol: 'wss', // Use WSS (secure WebSocket) for HTTPS deployments
-      host: undefined,
-      port: 443,
-    },
-    allowedHosts: [
-      '.loca.lt',
-      '.fly.dev',
-      'oversight.global',
-    ],
+    host: '0.0.0.0',
+    port: 4184,
+    hmr: false,
   },
   plugins: [
     react(),

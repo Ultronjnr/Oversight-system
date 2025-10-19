@@ -41,16 +41,16 @@ const InviteSignup = () => {
 
   const verifyInvitation = async () => {
     try {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('token', token)
-        .eq('email', email)
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      // Call Edge Function to verify invitation (uses service role key, bypasses RLS)
+      const { data, error } = await supabase.functions.invoke('verify-invitation', {
+        body: {
+          token,
+          email
+        }
+      });
 
-      if (error || !data) {
+      if (error || !data?.success) {
+        console.error('Invitation verification failed:', error || data?.error);
         toast({
           title: 'Invalid Invitation',
           description: 'This invitation link is invalid or has expired.',
@@ -60,7 +60,13 @@ const InviteSignup = () => {
         return;
       }
 
-      setInvitation(data);
+      console.log('✅ Invitation verified:', {
+        email: data.data.email,
+        role: data.data.role,
+        status: data.data.status
+      });
+
+      setInvitation(data.data);
     } catch (error) {
       console.error('Error verifying invitation:', error);
       toast({

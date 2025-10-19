@@ -134,16 +134,33 @@ const SuperAdminPanel = () => {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       // Determine the correct domain for invitation links
+      // Handle Builder.io preview URLs - use the actual deployment domain
       const hostname = window.location.hostname;
-      const isDevelopment = hostname.includes('fly.dev') || hostname.includes('localhost');
+      const isBuilderPreview = hostname === 'projects.builder.codes' || hostname.includes('builder.codes');
       const isProduction = hostname === 'oversight.global' || hostname.includes('oversight.global');
+      const isFlyDev = hostname.includes('fly.dev');
+      const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
 
       let baseDomain = window.location.origin; // fallback
-      if (isProduction) {
+
+      if (isBuilderPreview) {
+        // Builder.io preview - use the actual fly.dev domain
+        baseDomain = 'https://721bf99692d5413388a260c85efe5cf7-84b0cfa2-909f-4ec8-a8b4-0904af.fly.dev';
+      } else if (isProduction) {
         baseDomain = 'https://oversight.global';
-      } else if (hostname.includes('fly.dev')) {
+      } else if (isFlyDev) {
         baseDomain = `https://${hostname}`;
+      } else if (isLocalhost) {
+        baseDomain = 'http://localhost:5173'; // or your local dev port
       }
+
+      console.log('📧 Building invitation link:', {
+        hostname,
+        isBuilderPreview,
+        baseDomain,
+        email: inviteForm.email,
+        token: token.substring(0, 10) + '...'
+      });
 
       const inviteLink = `${baseDomain}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
 

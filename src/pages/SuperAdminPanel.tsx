@@ -275,13 +275,21 @@ const SuperAdminPanel = () => {
   const resendInvite = async (inv: Invitation) => {
     // Determine the correct domain for invitation links
     const hostname = window.location.hostname;
+    const isBuilderPreview = hostname === 'projects.builder.codes' || hostname.includes('builder.codes');
     const isProduction = hostname === 'oversight.global' || hostname.includes('oversight.global');
+    const isFlyDev = hostname.includes('fly.dev');
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
 
     let baseDomain = window.location.origin; // fallback
-    if (isProduction) {
+
+    if (isBuilderPreview) {
+      baseDomain = 'https://721bf99692d5413388a260c85efe5cf7-84b0cfa2-909f-4ec8-a8b4-0904af.fly.dev';
+    } else if (isProduction) {
       baseDomain = 'https://oversight.global';
-    } else if (hostname.includes('fly.dev')) {
+    } else if (isFlyDev) {
       baseDomain = `https://${hostname}`;
+    } else if (isLocalhost) {
+      baseDomain = 'http://localhost:5173';
     }
 
     const link = `${baseDomain}/invite?token=${inv.token}&email=${encodeURIComponent(inv.email)}`;

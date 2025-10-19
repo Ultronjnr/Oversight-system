@@ -24,14 +24,16 @@ const InviteSignup = () => {
   });
 
   const token = searchParams.get('token');
-  const email = searchParams.get('email');
+  // Clean up email - remove any newlines, carriage returns, and extra whitespace
+  const rawEmail = searchParams.get('email');
+  const email = rawEmail ? rawEmail.trim().replace(/[\r\n]/g, '').split(/[?&#]/)[0] : null;
 
   useEffect(() => {
     if (token && email) {
-      console.log('📨 Starting invitation verification...');
+      console.log('📨 Starting invitation verification...', { token: token.substring(0, 10) + '...', email });
       verifyInvitation();
     } else {
-      console.error('❌ Missing token or email in URL');
+      console.error('❌ Missing token or email in URL', { rawEmail, email });
       // Show form anyway with default values
       setInvitation({ email: 'user@example.com', role: 'Employee', department: null });
     }

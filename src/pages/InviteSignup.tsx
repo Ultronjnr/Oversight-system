@@ -41,16 +41,44 @@ const InviteSignup = () => {
 
   const verifyInvitation = async () => {
     try {
-      // Call Edge Function to verify invitation (uses service role key, bypasses RLS)
-      const { data, error } = await supabase.functions.invoke('verify-invitation', {
-        body: {
-          token,
-          email
-        }
-      });
+      console.log('🔍 Verifying invitation:', { token, email });
 
-      if (error || !data?.success) {
-        console.error('Invitation verification failed:', error || data?.error);
+      // Query invitations table directly with service role key
+      // If RLS is enabled, use unauthenticated user's perspective
+      const now = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('token', token)
+        .eq('email', email)
+        .eq('status', 'pending')
+        .gt('expires_at', now)
+        .single();
+
+      console.log('📋 Invitation query result:', { data, error });
+
+      if (error) {
+        console.error('❌ Query error:', error.message, error.code);
+
+        // If RLS is blocking, try to give a better error message
+        if (error.code === 'PGRST116') {
+          console.error('Invitation not found with token/email/status criteria');
+        } else if (error.message.includes('row level security')) {
+          console.error('RLS policy is blocking the query - this should be allowed for public invites');
+        }
+
+        toast({
+          title: 'Invalid Invitation',
+          description: 'This invitation link is invalid or has expired.',
+          variant: 'destructive'
+        });
+        navigate('/login');
+        return;
+      }
+
+      if (!data) {
+        console.error('❌ No invitation found');
         toast({
           title: 'Invalid Invitation',
           description: 'This invitation link is invalid or has expired.',
@@ -61,14 +89,17 @@ const InviteSignup = () => {
       }
 
       console.log('✅ Invitation verified:', {
-        email: data.data.email,
-        role: data.data.role,
-        status: data.data.status
+        id: data.id,
+        email: data.email,
+        role: data.role,
+        department: data.department,
+        status: data.status,
+        expires_at: data.expires_at
       });
 
-      setInvitation(data.data);
-    } catch (error) {
-      console.error('Error verifying invitation:', error);
+      setInvitation(data);
+    } catch (error: any) {
+      console.error('❌ Error verifying invitation:', error);
       toast({
         title: 'Error',
         description: 'Failed to verify invitation. Please try again.',

@@ -74,51 +74,68 @@ const InviteSignup = () => {
         return;
       }
 
-      console.log('🔍 Verifying invitation via Edge Function:', {
+      console.log('🔍 Verifying invitation:', {
         token: token.substring(0, 10) + '...',
-        email: email.substring(0, 5) + '...'
+        email: decodeURIComponent(email)
       });
 
-      // Call Edge Function which uses service role key (bypasses RLS)
-      const { data: responseData, error: functionError } = await supabase.functions.invoke('verify-invitation', {
-        body: { token, email }
-      });
+      // Try direct database query first (faster for client-side)
+      // This should work now with the RLS policy we created
+      const now = new Date().toISOString();
 
-      console.log('📡 Edge Function response:', {
-        success: responseData?.success,
-        error: functionError?.message,
-        hasData: !!responseData?.data
-      });
+      console.log('📋 Querying invitations table directly...');
+      const { data: invitationData, error: queryError } = await supabase
+        .from('invitations')
+        .select('id, email, role, department, status, expires_at, token, created_at')
+        .eq('token', token)
+        .eq('email', email)
+        .eq('status', 'pending')
+        .gt('expires_at', now)
+        .maybeSingle();
 
-      if (functionError) {
-        console.error('❌ Edge Function error:', functionError.message);
-        toast({
-          title: 'Verification Failed',
-          description: 'Could not verify invitation. Please check the link and try again.',
-          variant: 'destructive'
+      if (queryError) {
+        console.error('❌ Direct query error:', {
+          code: queryError.code,
+          message: queryError.message
         });
-        setTimeout(() => navigate('/login'), 2000);
+
+        // If direct query fails due to RLS, try Edge Function as fallback
+        console.log('⚠️ Direct query failed, trying Edge Function...');
+        const { data: responseData, error: functionError } = await supabase.functions.invoke('verify-invitation', {
+          body: { token, email }
+        });
+
+        if (functionError || !responseData?.success) {
+          console.error('❌ Both methods failed:', functionError?.message || responseData?.error);
+          toast({
+            title: 'Invalid Invitation',
+            description: 'This invitation link is invalid or has expired.',
+            variant: 'destructive'
+          });
+          setTimeout(() => navigate('/login'), 2000);
+          return;
+        }
+
+        setInvitation(responseData.data);
         return;
       }
 
-      if (!responseData?.success || !responseData?.data) {
-        console.error('❌ Invitation verification failed:', responseData?.error);
+      if (!invitationData) {
+        console.error('❌ No invitation found');
         toast({
           title: 'Invalid Invitation',
-          description: responseData?.error || 'This invitation link is invalid or has expired.',
+          description: 'This invitation link is invalid or has expired.',
           variant: 'destructive'
         });
         setTimeout(() => navigate('/login'), 2000);
         return;
       }
 
-      const invitationData = responseData.data;
-
-      // Verify expiry date client-side as backup
+      // Verify expiry date client-side
       const expiresAt = new Date(invitationData.expires_at);
-      const now = new Date();
-      if (expiresAt < now) {
-        console.error('❌ Invitation has expired:', { expiresAt, now });
+      const nowDate = new Date();
+      if (expiresAt < nowDate) {
+        console.error('❌ Invitation has expired');
         toast({
           title: 'Invitation Expired',
           description: `This invitation expired on ${expiresAt.toLocaleDateString()}.`,
@@ -132,17 +149,13 @@ const InviteSignup = () => {
         id: invitationData.id,
         email: invitationData.email,
         role: invitationData.role,
-        department: invitationData.department,
-        status: invitationData.status,
-        expiresAt: expiresAt.toLocaleDateString()
+        department: invitationData.department
       });
 
       setInvitation(invitationData);
     } catch (error: any) {
       console.error('❌ Unexpected error verifying invitation:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
+        message: error.message
       });
 
       toast({

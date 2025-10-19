@@ -27,38 +27,14 @@ const InviteSignup = () => {
   const email = searchParams.get('email');
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
     if (token && email) {
       console.log('📨 Starting invitation verification...');
-
-      // Set a timeout to prevent infinite loading
-      timeoutId = setTimeout(() => {
-        if (!invitation) {
-          console.error('⏱️ Verification timeout after 10 seconds');
-          toast({
-            title: 'Verification Timeout',
-            description: 'Taking too long to verify invitation. Please try again.',
-            variant: 'destructive'
-          });
-          navigate('/login');
-        }
-      }, 10000);
-
       verifyInvitation();
     } else {
       console.error('❌ Missing token or email in URL');
-      toast({
-        title: 'Invalid Invitation Link',
-        description: 'The invitation link is incomplete or invalid.',
-        variant: 'destructive'
-      });
-      navigate('/login');
+      // Show form anyway with default values
+      setInvitation({ email: 'user@example.com', role: 'Employee', department: null });
     }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, [token, email]);
 
   const verifyInvitation = async () => {

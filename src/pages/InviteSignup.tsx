@@ -51,7 +51,7 @@ const InviteSignup = () => {
 
       console.log('🔍 Verifying invitation via Edge Function:', {
         token: token.substring(0, 10) + '...',
-        email
+        email: email.substring(0, 10) + '...'
       });
 
       // Use Edge Function which has service role key and will work

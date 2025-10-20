@@ -192,18 +192,30 @@ const InviteSignup = () => {
         }
       }
 
-      // Mark invitation as accepted
-      await supabase
-        .from('invitations')
-        .update({
-          status: 'accepted',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', invitation.id);
+      // Mark invitation as accepted (if we have a valid invitation ID)
+      if (invitation.id && !invitation.id.startsWith('temp_') && !invitation.id.startsWith('local_')) {
+        const { error: updateError } = await supabase
+          .from('invitations')
+          .update({
+            status: 'accepted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', invitation.id);
+
+        if (updateError) {
+          console.warn('⚠️ Failed to mark invitation as accepted:', updateError);
+          // Non-fatal error - continue with redirect
+        } else {
+          console.log('✅ Invitation marked as accepted');
+        }
+      } else {
+        console.log('⚠️ No valid invitation ID to update (using fallback invitation)');
+      }
 
       setShowLoader(true);
 
       // Show success and redirect
+      console.log('✅ Account created successfully, redirecting to login...');
       setTimeout(() => {
         toast({
           title: 'Account Created Successfully',
@@ -211,17 +223,17 @@ const InviteSignup = () => {
         });
         navigate('/login');
         setShowLoader(false);
-      }, 3200);
+      }, 2000);
 
     } catch (error: any) {
-      console.error('Signup error:', error);
+      console.error('❌ Signup error:', error);
+      setIsLoading(false);
+      setShowLoader(false);
       toast({
         title: 'Signup Failed',
         description: error.message || 'Failed to create account. Please try again.',
         variant: 'destructive'
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 

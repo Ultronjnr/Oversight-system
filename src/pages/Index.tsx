@@ -14,25 +14,25 @@ const Index = () => {
         // Redirect based on user role
         switch (user.role) {
           case 'Employee':
-            navigate('/employee/portal');
+            navigate('/employee/portal', { replace: true });
             break;
           case 'HOD':
-            navigate('/hod/portal');
+            navigate('/hod/portal', { replace: true });
             break;
           case 'Finance':
-            navigate('/finance/portal');
+            navigate('/finance/portal', { replace: true });
             break;
           case 'Admin':
-            navigate('/admin/portal');
+            navigate('/admin/portal', { replace: true });
             break;
           case 'SuperUser':
-            navigate('/super-admin');
+            navigate('/super-admin', { replace: true });
             break;
           default:
-            navigate('/login');
+            navigate('/login', { replace: true });
         }
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     }
   }, [user, isLoading, navigate]);

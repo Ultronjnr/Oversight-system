@@ -22,12 +22,10 @@ const InviteSignup = () => {
   });
 
   const token = searchParams.get('token');
-  // Clean up email - extract only valid email format
   const rawEmail = searchParams.get('email');
   const email = rawEmail
     ? rawEmail
         .trim()
-        // Extract email pattern: anything before @ followed by domain
         .match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[0]
         ?.toLowerCase() || null
     : null;
@@ -43,7 +41,6 @@ const InviteSignup = () => {
         }
       } else {
         console.error('❌ Missing token or email in URL', { rawEmail, email });
-        // Show form anyway with default values
         if (isMounted) {
           setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
         }
@@ -52,7 +49,6 @@ const InviteSignup = () => {
 
     startVerification();
 
-    // Cleanup to prevent state updates after unmount
     return () => {
       isMounted = false;
     };
@@ -71,7 +67,6 @@ const InviteSignup = () => {
         email: email.substring(0, 10) + '...'
       });
 
-      // Create a timeout promise that resolves after 5 seconds
       const timeoutPromise = new Promise<any>((resolve) => {
         setTimeout(() => {
           console.warn('⏱️ Verification timeout - showing form anyway');
@@ -79,13 +74,11 @@ const InviteSignup = () => {
         }, 5000);
       });
 
-      // Create verification promise
       const verificationPromise = supabase.functions.invoke('verify-invitation', {
         body: { token, email },
         headers: { 'Content-Type': 'application/json' }
       }).then(result => ({ ...result, timedOut: false }));
 
-      // Race between the verification and the timeout
       const result: any = await Promise.race([
         verificationPromise,
         timeoutPromise
@@ -195,7 +188,6 @@ const InviteSignup = () => {
     try {
       console.log('🔐 Creating user account in Supabase Auth...');
 
-      // Create user account in Supabase Auth - this is critical
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: invitation.email,
         password: formData.password,
@@ -215,20 +207,17 @@ const InviteSignup = () => {
         throw authError;
       }
 
-      console.log('✅ Account created successfully, redirecting to login...');
+      console.log('✅ Account created successfully');
       setIsLoading(false);
 
-      // Show success toast
       toast({
         title: 'Account Created Successfully',
         description: 'Welcome to Oversight!',
       });
 
-      // Navigate to login page IMMEDIATELY - don't wait for profile/invitation updates
       console.log('🔄 Redirecting to login page...');
       navigate('/login', { replace: true });
 
-      // BACKGROUND TASKS: Save profile and mark invitation as accepted (fire and forget)
       if (authData.session?.user) {
         console.log('📝 Saving profile in background...');
         supabase
@@ -247,7 +236,6 @@ const InviteSignup = () => {
           .catch((err) => console.warn('⚠️ Profile save failed (non-critical):', err.message));
       }
 
-      // Mark invitation as accepted in background (non-blocking)
       if (invitation.id && !invitation.id.startsWith('fallback_')) {
         console.log('📋 Marking invitation as accepted in background...');
         supabase
@@ -282,22 +270,18 @@ const InviteSignup = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 p-4 relative overflow-hidden">
-      {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-10 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 right-20 w-24 h-24 bg-indigo-200/30 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute bottom-20 left-1/4 w-40 h-40 bg-purple-200/20 rounded-full blur-3xl animate-pulse delay-2000"></div>
       </div>
 
-      {/* Signup Card */}
       <Card className="w-full max-w-md relative z-10 bg-white/80 backdrop-blur-lg border-0 shadow-2xl shadow-blue-500/10 animate-fade-in">
         <CardHeader className="text-center pb-8">
-          {/* Logo with Premium Animation */}
           <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl w-fit shadow-lg shadow-green-500/25 transform hover:scale-110 transition-all duration-300">
             <UserPlus className="h-8 w-8 text-white" />
           </div>
 
-          {/* Animated Title */}
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
             Complete Setup
           </CardTitle>
@@ -310,7 +294,6 @@ const InviteSignup = () => {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field (Read-only) */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                 Email Address
@@ -327,7 +310,6 @@ const InviteSignup = () => {
               </div>
             </div>
 
-            {/* Name Field */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium text-gray-700">
                 Full Name *
@@ -346,7 +328,6 @@ const InviteSignup = () => {
               </div>
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                 Password *
@@ -375,7 +356,6 @@ const InviteSignup = () => {
               <p className="text-xs text-gray-500">Minimum 8 characters</p>
             </div>
 
-            {/* Confirm Password Field */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
                 Confirm Password *
@@ -403,7 +383,6 @@ const InviteSignup = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl shadow-lg shadow-green-500/25 transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -420,7 +399,6 @@ const InviteSignup = () => {
             </Button>
           </form>
 
-          {/* Invitation Details */}
           <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100/50">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>

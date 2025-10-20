@@ -24,20 +24,14 @@ const InviteSignup = () => {
   });
 
   const token = searchParams.get('token');
-  // Clean up email - remove any newlines, carriage returns, extra whitespace, and invalid characters
+  // Clean up email - extract only valid email format
   const rawEmail = searchParams.get('email');
   const email = rawEmail
     ? rawEmail
         .trim()
-        .replace(/[\r\n\\]/g, '') // Remove newlines and backslashes
-        .replace(/[nNtT]/g, (match, offset, str) => {
-          // Only remove n, N, t, T if preceded by nothing (start or removed backslash)
-          const prev = offset > 0 ? str[offset - 1] : '';
-          return (prev === '' || prev === ' ') && match === 'n' ? '' : match;
-        })
-        .replace(/[?&#].*/g, '') // Remove query params if any
-        .replace(/\s+/g, '') // Remove all whitespace
-        .match(/[^\\r\\n]*/)?.[0] || rawEmail // Get valid part
+        // Extract email pattern: anything before @ followed by domain
+        .match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[0]
+        ?.toLowerCase() || null
     : null;
 
   useEffect(() => {

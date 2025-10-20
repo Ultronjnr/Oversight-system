@@ -21,6 +21,16 @@ import { Toaster } from "@/components/ui/toaster";
 
 const queryClient = new QueryClient();
 
+// Loading component for lazy-loaded pages
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="text-center">
+      <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
+
 const App = () => {
   console.log('App component rendering...');
 
@@ -32,14 +42,14 @@ const App = () => {
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/invite" element={<InviteSignup />} />
-            <Route path="/employee/portal" element={<Dashboard />} />
-            <Route path="/hod/portal" element={<Dashboard />} />
-            <Route path="/finance/portal" element={<Dashboard />} />
-            <Route path="/admin/portal" element={<AdminPortal />} />
-            <Route path="/superuser/portal" element={<SuperAdminPanel />} />
-            <Route path="/super-admin" element={<SuperAdminPanel />} />
-            <Route path="/quotes/history" element={<QuoteHistory />} />
-            <Route path="/analytics" element={<AnalyticsOverview />} />
+            <Route path="/employee/portal" element={<Suspense fallback={<LoadingFallback />}><Dashboard /></Suspense>} />
+            <Route path="/hod/portal" element={<Suspense fallback={<LoadingFallback />}><Dashboard /></Suspense>} />
+            <Route path="/finance/portal" element={<Suspense fallback={<LoadingFallback />}><Dashboard /></Suspense>} />
+            <Route path="/admin/portal" element={<Suspense fallback={<LoadingFallback />}><AdminPortal /></Suspense>} />
+            <Route path="/superuser/portal" element={<Suspense fallback={<LoadingFallback />}><SuperAdminPanel /></Suspense>} />
+            <Route path="/super-admin" element={<Suspense fallback={<LoadingFallback />}><SuperAdminPanel /></Suspense>} />
+            <Route path="/quotes/history" element={<Suspense fallback={<LoadingFallback />}><QuoteHistory /></Suspense>} />
+            <Route path="/analytics" element={<Suspense fallback={<LoadingFallback />}><AnalyticsOverview /></Suspense>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <Toaster />

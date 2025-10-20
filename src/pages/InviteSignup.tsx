@@ -82,7 +82,15 @@ const InviteSignup = () => {
 
       if (result.timedOut) {
         console.warn('⚠️ Verification timed out, allowing user to proceed');
-        setInvitation({ email, role: 'Employee', department: null });
+        setInvitation({
+          id: `fallback_${Date.now()}`,
+          email,
+          role: 'Employee',
+          department: null,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString()
+        });
         return;
       }
 
@@ -97,7 +105,15 @@ const InviteSignup = () => {
       if (functionError) {
         console.error('❌ Edge Function invocation error:', functionError);
         // Fallback: allow user to proceed anyway and verify on submit
-        setInvitation({ email, role: 'Employee', department: null });
+        setInvitation({
+          id: `fallback_${Date.now()}`,
+          email,
+          role: 'Employee',
+          department: null,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString()
+        });
         return;
       }
 
@@ -110,13 +126,29 @@ const InviteSignup = () => {
       if (!responseData?.success) {
         console.error('❌ Verification failed:', responseData?.error);
         // Fallback: show form anyway
-        setInvitation({ email, role: 'Employee', department: null });
+        setInvitation({
+          id: `fallback_${Date.now()}`,
+          email,
+          role: 'Employee',
+          department: null,
+          status: 'pending',
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          created_at: new Date().toISOString()
+        });
         return;
       }
     } catch (error: any) {
       console.error('❌ Unexpected error:', error.message);
       // Always show form as fallback
-      setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
+      setInvitation({
+        id: `fallback_${Date.now()}`,
+        email: email || 'user@example.com',
+        role: 'Employee',
+        department: null,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString()
+      });
     }
   };
 

@@ -245,17 +245,21 @@ const InviteSignup = () => {
       }
 
       setShowLoader(true);
+      setIsLoading(false);
 
       // Show success and redirect
       console.log('✅ Account created successfully, redirecting to login...');
+
+      // Wait for loader animation, then navigate
       setTimeout(() => {
-        toast({
-          title: 'Account Created Successfully',
-          description: 'Welcome to Oversight! You can now log in with your credentials.',
-        });
+        console.log('🔄 Navigating to login page...');
         navigate('/login');
-        setShowLoader(false);
-      }, 2000);
+
+        // Close loader after navigation
+        setTimeout(() => {
+          setShowLoader(false);
+        }, 500);
+      }, 1800);
 
     } catch (error: any) {
       console.error('❌ Signup error:', error);

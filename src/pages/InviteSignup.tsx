@@ -81,7 +81,7 @@ const InviteSignup = () => {
       ]);
 
       if (result.timedOut) {
-        console.warn('⚠️ Verification timed out, allowing user to proceed');
+        console.warn('⚠�� Verification timed out, allowing user to proceed');
         setInvitation({
           id: `fallback_${Date.now()}`,
           email,
@@ -244,22 +244,23 @@ const InviteSignup = () => {
         console.log('⚠️ No valid invitation ID to update (using fallback invitation)');
       }
 
-      setShowLoader(true);
-      setIsLoading(false);
-
-      // Show success and redirect
       console.log('✅ Account created successfully, redirecting to login...');
 
-      // Wait for loader animation, then navigate
+      // Show success toast
+      toast({
+        title: 'Account Created Successfully',
+        description: 'Welcome to Oversight! Redirecting to login...',
+      });
+
+      // Set loading and immediately navigate (no loader animation)
+      setIsLoading(false);
+      setShowLoader(false);
+
+      // Navigate immediately without delay
       setTimeout(() => {
         console.log('🔄 Navigating to login page...');
         navigate('/login');
-
-        // Close loader after navigation
-        setTimeout(() => {
-          setShowLoader(false);
-        }, 500);
-      }, 1800);
+      }, 500);
 
     } catch (error: any) {
       console.error('❌ Signup error:', error);

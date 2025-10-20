@@ -35,14 +35,29 @@ const InviteSignup = () => {
     : null;
 
   useEffect(() => {
-    if (token && email) {
-      console.log('📨 Starting invitation verification...', { token: token.substring(0, 10) + '...', email });
-      verifyInvitation();
-    } else {
-      console.error('❌ Missing token or email in URL', { rawEmail, email });
-      // Show form anyway with default values
-      setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
-    }
+    let isMounted = true;
+
+    const startVerification = async () => {
+      if (token && email) {
+        console.log('📨 Starting invitation verification...', { token: token.substring(0, 10) + '...', email });
+        if (isMounted) {
+          await verifyInvitation();
+        }
+      } else {
+        console.error('❌ Missing token or email in URL', { rawEmail, email });
+        // Show form anyway with default values
+        if (isMounted) {
+          setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
+        }
+      }
+    };
+
+    startVerification();
+
+    // Cleanup to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [token, email]);
 
   const verifyInvitation = async () => {

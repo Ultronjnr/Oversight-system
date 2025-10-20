@@ -19,9 +19,12 @@ export default defineConfig(({ mode }) => ({
     host: '0.0.0.0',
     port: 4184,
     allowedHosts: 'all',
-    // Configure HMR for remote deployments
-    // Don't use WebSocket at all to avoid connection issues
-    middlewareMode: false,
+    // Completely disable HMR - removes WebSocket connections
+    hmr: false,
+    watch: {
+      // Disable file watching to reduce resource usage
+      ignored: ['**/node_modules/**', '**/.git/**']
+    }
   },
   plugins: [
     react(),

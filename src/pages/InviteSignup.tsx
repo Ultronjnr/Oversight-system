@@ -54,28 +54,25 @@ const InviteSignup = () => {
         email: email.substring(0, 10) + '...'
       });
 
-      // Create a timeout promise that resolves after 8 seconds
-      const timeoutPromise = new Promise((resolve) => {
-        const timer = setTimeout(() => {
+      // Create a timeout promise that resolves after 5 seconds
+      const timeoutPromise = new Promise<any>((resolve) => {
+        setTimeout(() => {
           console.warn('⏱️ Verification timeout - showing form anyway');
           resolve({ timedOut: true });
-        }, 8000);
-        return timer;
+        }, 5000);
       });
 
-      // Race between the verification and the timeout
-      let verificationPromise = supabase.functions.invoke('verify-invitation', {
+      // Create verification promise
+      const verificationPromise = supabase.functions.invoke('verify-invitation', {
         body: { token, email },
         headers: { 'Content-Type': 'application/json' }
-      });
+      }).then(result => ({ ...result, timedOut: false }));
 
-      // Convert promise to a resolvable form for racing
-      const verificationRace = Promise.race([
-        verificationPromise.then(result => ({ ...result, timedOut: false })),
+      // Race between the verification and the timeout
+      const result: any = await Promise.race([
+        verificationPromise,
         timeoutPromise
       ]);
-
-      const result: any = await verificationRace;
 
       if (result.timedOut) {
         console.warn('⚠️ Verification timed out, allowing user to proceed');

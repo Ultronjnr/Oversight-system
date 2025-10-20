@@ -35,7 +35,7 @@ const InviteSignup = () => {
     } else {
       console.error('❌ Missing token or email in URL', { rawEmail, email });
       // Show form anyway with default values
-      setInvitation({ email: 'user@example.com', role: 'Employee', department: null });
+      setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
     }
   }, [token, email]);
 
@@ -45,7 +45,7 @@ const InviteSignup = () => {
         console.error('❌ Missing token or email');
         // Don't show error, just load the page anyway
         // User will see error when trying to submit
-        setInvitation({ email, role: 'Employee', department: null });
+        setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
         return;
       }
 
@@ -54,47 +54,66 @@ const InviteSignup = () => {
         email: email.substring(0, 10) + '...'
       });
 
-      // Use Edge Function which has service role key and will work
-      try {
-        const { data: responseData, error: functionError } = await supabase.functions.invoke('verify-invitation', {
-          body: { token, email },
-          headers: { 'Content-Type': 'application/json' }
-        });
+      // Create a timeout promise that resolves after 8 seconds
+      const timeoutPromise = new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          console.warn('⏱️ Verification timeout - showing form anyway');
+          resolve({ timedOut: true });
+        }, 8000);
+        return timer;
+      });
 
-        console.log('📡 Edge Function response:', {
-          success: responseData?.success,
-          error: functionError?.message,
-          status: responseData?.status
-        });
+      // Race between the verification and the timeout
+      let verificationPromise = supabase.functions.invoke('verify-invitation', {
+        body: { token, email },
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-        if (functionError) {
-          console.error('❌ Edge Function invocation error:', functionError);
-          // Fallback: allow user to proceed anyway and verify on submit
-          setInvitation({ email, role: 'Employee', department: null });
-          return;
-        }
+      // Convert promise to a resolvable form for racing
+      const verificationRace = Promise.race([
+        verificationPromise.then(result => ({ ...result, timedOut: false })),
+        timeoutPromise
+      ]);
 
-        if (responseData?.success && responseData?.data) {
-          console.log('✅ Invitation verified successfully');
-          setInvitation(responseData.data);
-          return;
-        }
+      const result: any = await verificationRace;
 
-        if (!responseData?.success) {
-          console.error('❌ Verification failed:', responseData?.error);
-          // Fallback: show form anyway
-          setInvitation({ email, role: 'Employee', department: null });
-          return;
-        }
-      } catch (edgeFunctionError) {
-        console.error('⚠️ Edge Function error:', edgeFunctionError);
-        // Fallback: allow signup with basic info
+      if (result.timedOut) {
+        console.warn('⚠️ Verification timed out, allowing user to proceed');
         setInvitation({ email, role: 'Employee', department: null });
+        return;
+      }
+
+      const { data: responseData, error: functionError } = result;
+
+      console.log('📡 Edge Function response:', {
+        success: responseData?.success,
+        error: functionError?.message,
+        status: responseData?.status
+      });
+
+      if (functionError) {
+        console.error('❌ Edge Function invocation error:', functionError);
+        // Fallback: allow user to proceed anyway and verify on submit
+        setInvitation({ email, role: 'Employee', department: null });
+        return;
+      }
+
+      if (responseData?.success && responseData?.data) {
+        console.log('✅ Invitation verified successfully');
+        setInvitation(responseData.data);
+        return;
+      }
+
+      if (!responseData?.success) {
+        console.error('❌ Verification failed:', responseData?.error);
+        // Fallback: show form anyway
+        setInvitation({ email, role: 'Employee', department: null });
+        return;
       }
     } catch (error: any) {
       console.error('❌ Unexpected error:', error.message);
       // Always show form as fallback
-      setInvitation({ email, role: 'Employee', department: null });
+      setInvitation({ email: email || 'user@example.com', role: 'Employee', department: null });
     }
   };
 

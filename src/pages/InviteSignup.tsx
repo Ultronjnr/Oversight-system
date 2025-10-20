@@ -260,22 +260,17 @@ const InviteSignup = () => {
       }
 
       console.log('✅ Account created successfully, redirecting to login...');
+      setIsLoading(false);
 
       // Show success toast
       toast({
         title: 'Account Created Successfully',
-        description: 'Welcome to Oversight! Redirecting to login...',
+        description: 'Welcome to Oversight!',
       });
 
-      // Set loading and immediately navigate (no loader animation)
-      setIsLoading(false);
-      setShowLoader(false);
-
-      // Navigate immediately without delay
-      setTimeout(() => {
-        console.log('🔄 Navigating to login page...');
-        navigate('/login');
-      }, 500);
+      // Navigate to login page immediately
+      console.log('🔄 Navigating to login page...');
+      navigate('/login', { replace: true });
 
     } catch (error: any) {
       console.error('❌ Signup error:', error);

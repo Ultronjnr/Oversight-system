@@ -193,7 +193,9 @@ const InviteSignup = () => {
     setIsLoading(true);
 
     try {
-      // Create user account in Supabase Auth
+      console.log('🔐 Creating user account in Supabase Auth...');
+
+      // Create user account in Supabase Auth - this is critical
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: invitation.email,
         password: formData.password,
@@ -209,47 +211,8 @@ const InviteSignup = () => {
       });
 
       if (authError) {
+        console.error('❌ Auth error:', authError);
         throw authError;
-      }
-
-      // If a session is issued immediately (email confirmation disabled), create profile row
-      if (authData.session?.user) {
-        const { error: profileErr } = await supabase
-          .from('users')
-          .insert({
-            id: authData.session.user.id,
-            email: invitation.email,
-            role: invitation.role,
-            name: formData.name,
-            department: invitation.department || null,
-            permissions: invitation.permissions || []
-          })
-          .select('id')
-          .single();
-        // Non-fatal if this fails; RLS requires session which may not exist when email confirmation is on
-        if (profileErr) {
-          console.warn('Profile insert skipped or failed (likely no session yet):', profileErr.message);
-        }
-      }
-
-      // Mark invitation as accepted (if we have a valid invitation ID)
-      if (invitation.id && !invitation.id.startsWith('fallback_')) {
-        const { error: updateError } = await supabase
-          .from('invitations')
-          .update({
-            status: 'accepted',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', invitation.id);
-
-        if (updateError) {
-          console.warn('⚠️ Failed to mark invitation as accepted:', updateError);
-          // Non-fatal error - continue with redirect
-        } else {
-          console.log('✅ Invitation marked as accepted');
-        }
-      } else {
-        console.log('⚠️ No valid invitation ID to update (using fallback invitation)');
       }
 
       console.log('✅ Account created successfully, redirecting to login...');
@@ -261,9 +224,42 @@ const InviteSignup = () => {
         description: 'Welcome to Oversight!',
       });
 
-      // Navigate to login page immediately
-      console.log('🔄 Navigating to login page...');
+      // Navigate to login page IMMEDIATELY - don't wait for profile/invitation updates
+      console.log('🔄 Redirecting to login page...');
       navigate('/login', { replace: true });
+
+      // BACKGROUND TASKS: Save profile and mark invitation as accepted (fire and forget)
+      if (authData.session?.user) {
+        console.log('📝 Saving profile in background...');
+        supabase
+          .from('users')
+          .insert({
+            id: authData.session.user.id,
+            email: invitation.email,
+            role: invitation.role,
+            name: formData.name,
+            department: invitation.department || null,
+            permissions: invitation.permissions || []
+          })
+          .select('id')
+          .single()
+          .then(() => console.log('✅ Profile saved'))
+          .catch((err) => console.warn('⚠️ Profile save failed (non-critical):', err.message));
+      }
+
+      // Mark invitation as accepted in background (non-blocking)
+      if (invitation.id && !invitation.id.startsWith('fallback_')) {
+        console.log('📋 Marking invitation as accepted in background...');
+        supabase
+          .from('invitations')
+          .update({
+            status: 'accepted',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', invitation.id)
+          .then(() => console.log('✅ Invitation marked as accepted'))
+          .catch((err) => console.warn('⚠️ Invitation update failed (non-critical):', err.message));
+      }
 
     } catch (error: any) {
       console.error('❌ Signup error:', error);

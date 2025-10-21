@@ -195,7 +195,7 @@ const Dashboard = () => {
             ? (role === 'Finance' ? 'APPROVED' : 'PENDING_FINANCE_APPROVAL')
             : 'DECLINED';
 
-          return {
+          const updatedPR = {
             ...pr,
             [statusField]: status,
             status: newStatus,
@@ -219,6 +219,17 @@ const Dashboard = () => {
               }
             ]
           };
+
+          // Save to Supabase in background
+          prService.updatePRStatus(pr.id || prId,
+            role === 'HOD' ? status : undefined,
+            role === 'Finance' ? status : undefined,
+            { history: updatedPR.history, status: newStatus }
+          ).catch(err => {
+            console.warn('Background save to Supabase failed:', err);
+          });
+
+          return updatedPR;
         }
         return pr;
       });

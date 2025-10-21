@@ -75,28 +75,48 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubmitPR = (newPR: any) => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    const allPRs = savedPRs ? JSON.parse(savedPRs) : [];
+  const handleSubmitPR = async (newPR: any) => {
+    try {
+      const savedPRs = localStorage.getItem('purchaseRequisitions');
+      const allPRs = savedPRs ? JSON.parse(savedPRs) : [];
 
-    // Route the PR through proper procurement workflow
-    const routedPR = {
-      ...newPR,
-      hodStatus: userRole === 'HOD' ? 'Approved' : 'Pending',
-      financeStatus: userRole === 'Finance' ? 'Approved' : 'Pending',
-      status: userRole === 'Finance' ? 'APPROVED' : userRole === 'HOD' ? 'PENDING_FINANCE_APPROVAL' : 'PENDING_HOD_APPROVAL'
-    };
+      // Route the PR through proper procurement workflow
+      const routedPR = {
+        ...newPR,
+        requestedBy: user?.id,
+        requestedByName: user?.name,
+        requestedByRole: user?.role,
+        requestedByDepartment: user?.department,
+        hodStatus: userRole === 'HOD' ? 'Approved' : 'Pending',
+        financeStatus: userRole === 'Finance' ? 'Approved' : 'Pending',
+        status: userRole === 'Finance' ? 'APPROVED' : userRole === 'HOD' ? 'PENDING_FINANCE_APPROVAL' : 'PENDING_HOD_APPROVAL'
+      };
 
-    allPRs.push(routedPR);
-    localStorage.setItem('purchaseRequisitions', JSON.stringify(allPRs));
+      // Save to Supabase
+      if (user?.id) {
+        prService.createPurchaseRequisition(routedPR).catch(err => {
+          console.warn('Background save to Supabase failed:', err);
+        });
+      }
 
-    setMyPurchaseRequisitions(prev => [...prev, routedPR]);
-    setIsNewPROpen(false);
+      allPRs.push(routedPR);
+      localStorage.setItem('purchaseRequisitions', JSON.stringify(allPRs));
 
-    toast({
-      title: "Purchase Requisition Submitted",
-      description: "Your purchase requisition has been submitted for approval.",
-    });
+      setMyPurchaseRequisitions(prev => [...prev, routedPR]);
+      setIsNewPROpen(false);
+
+      toast({
+        title: "Purchase Requisition Submitted",
+        description: "Your purchase requisition has been submitted for approval.",
+      });
+    } catch (error) {
+      console.error('Error submitting PR:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit purchase requisition.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleHODFinalize = (prId: string, finalizationData: any) => {

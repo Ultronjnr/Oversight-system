@@ -19,6 +19,7 @@ import {
 import { Plus, Clock, CheckCircle, BarChart3, FileText, Shield, Settings, ShoppingCart, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cleanupDuplicateIds } from '../utils/dataCleanup';
+import * as prService from '../services/purchaseRequisitionService';
 
 const Dashboard = () => {
   const { user } = useAuth();

@@ -106,6 +106,15 @@ const HODPortal = () => {
     }
   };
 
+  const handleQuoteUpdate = async (quoteId: string, updatedData: any) => {
+    // Find the quote to update
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote) {
+      const newStatus = updatedData.hodStatus || quote.hodStatus;
+      await updateQuoteStatus(quoteId, newStatus);
+    }
+  };
+
   return (
     <Layout title="Head of Department Portal">
       <div className="space-y-8">

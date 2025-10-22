@@ -242,16 +242,6 @@ const SuperAdminPanel = () => {
             status: 'sent',
             message: `Email sent successfully via ${result.data?.provider || 'Resend'}`
           });
-
-          // Update invitation status to accepted if email was sent
-          const sentInvite = invites.find(inv => inv.email === inviteForm.email && inv.status === 'pending');
-          if (sentInvite && !sentInvite.id.startsWith('temp_')) {
-            supabase
-              .from('invitations')
-              .update({ status: 'accepted' })
-              .eq('id', sentInvite.id)
-              .catch(err => console.warn('Could not update status:', err));
-          }
         })
         .catch((error) => {
           console.error('❌ Email send error:', error);

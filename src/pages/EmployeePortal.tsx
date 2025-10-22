@@ -3,31 +3,55 @@ import Layout from '../components/Layout';
 import QuoteForm from '../components/QuoteForm';
 import QuoteTable from '../components/QuoteTable';
 import { useAuth } from '../contexts/AuthContext';
+import { QuoteService } from '../services/quoteService';
+import { toast } from '@/hooks/use-toast';
 
 const EmployeePortal = () => {
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load quotes from localStorage
-    const savedQuotes = localStorage.getItem('quotes');
-    if (savedQuotes) {
-      const allQuotes = JSON.parse(savedQuotes);
-      // Filter quotes submitted by this employee
-      const employeeQuotes = allQuotes.filter((quote: any) => quote.requestedBy === user?.id);
-      setQuotes(employeeQuotes);
+    if (user?.id) {
+      loadQuotes();
     }
   }, [user]);
 
-  const handleSubmitQuote = (newQuote: any) => {
-    // Save to localStorage (mock database)
-    const savedQuotes = localStorage.getItem('quotes');
-    const allQuotes = savedQuotes ? JSON.parse(savedQuotes) : [];
-    allQuotes.push(newQuote);
-    localStorage.setItem('quotes', JSON.stringify(allQuotes));
-    
-    // Update local state
-    setQuotes(prev => [...prev, newQuote]);
+  const loadQuotes = async () => {
+    try {
+      setIsLoading(true);
+      const employeeQuotes = await QuoteService.getQuotesForEmployee(user!.id);
+      setQuotes(employeeQuotes || []);
+    } catch (error) {
+      console.error('Error loading quotes:', error);
+      toast({
+        title: "Error Loading Quotes",
+        description: "Failed to load your quote requests.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitQuote = async (newQuote: any) => {
+    try {
+      const createdQuote = await QuoteService.createQuote(newQuote);
+      if (createdQuote) {
+        setQuotes(prev => [...prev, createdQuote]);
+        toast({
+          title: "Quote submitted successfully",
+          description: "Your quote request has been submitted for review.",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      toast({
+        title: "Submission failed",
+        description: "There was an error submitting your quote request.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

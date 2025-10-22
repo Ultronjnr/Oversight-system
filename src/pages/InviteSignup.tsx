@@ -90,7 +90,7 @@ const InviteSignup = () => {
           .from('invitations')
           .select('id, email, role, department, status, expires_at, token, created_at')
           .eq('token', token)
-          .eq('email', email.toLowerCase())
+          .ilike('email', email)
           .eq('status', 'pending')
           .maybeSingle();
 
@@ -127,7 +127,7 @@ const InviteSignup = () => {
           .from('invitations')
           .select('id, email, role, department, status, expires_at, token, created_at')
           .eq('token', token)
-          .eq('email', email.toLowerCase())
+          .ilike('email', email)
           .eq('status', 'pending')
           .maybeSingle();
 
@@ -161,7 +161,7 @@ const InviteSignup = () => {
           .from('invitations')
           .select('id, email, role, department, status, expires_at, token, created_at')
           .eq('token', token)
-          .eq('email', email.toLowerCase())
+          .ilike('email', email)
           .eq('status', 'pending')
           .maybeSingle();
 
@@ -189,7 +189,7 @@ const InviteSignup = () => {
           .from('invitations')
           .select('id, email, role, department, status, expires_at, token, created_at')
           .eq('token', token)
-          .eq('email', email?.toLowerCase())
+          .ilike('email', email || '')
           .eq('status', 'pending')
           .maybeSingle();
 

@@ -320,12 +320,32 @@ const SuperAdminPanel = () => {
 
     const link = `${baseDomain}/invite?token=${inv.token}&email=${encodeURIComponent(inv.email)}`;
     try {
-      await supabase.functions.invoke('send-invitation-email', {
+      const result = await supabase.functions.invoke('send-invitation-email', {
         body: { email: inv.email, role: inv.role, department: inv.department, inviteLink: link }
       });
-      toast({ title: 'Invitation resent', description: `Email resent to ${inv.email}` });
-    } catch (_) {
-      toast({ title: 'Resent (fallback)', description: link });
+
+      const responseData = result?.data || result;
+      if (responseData?.success !== false) {
+        emitInvitationEvent({
+          email: inv.email,
+          role: inv.role,
+          status: 'sent',
+          message: `Email resent successfully to ${inv.email}`
+        });
+        toast({ title: 'Invitation resent', description: `Email resent to ${inv.email}` });
+      } else {
+        throw new Error(responseData?.error || 'Failed to send');
+      }
+    } catch (error) {
+      console.error('Resend error:', error);
+      emitInvitationEvent({
+        email: inv.email,
+        role: inv.role,
+        status: 'failed',
+        message: 'Failed to resend email',
+        error: (error as any)?.message || 'Check debug log'
+      });
+      toast({ title: 'Resend failed', description: `Please check the debug log. Fallback link: ${link}` });
     }
   };
 

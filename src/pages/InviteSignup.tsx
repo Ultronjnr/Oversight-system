@@ -349,7 +349,7 @@ const InviteSignup = () => {
           </CardTitle>
 
           <CardDescription className="text-gray-600">
-            You've been invited to join Oversight as a <strong>{invitation.role}</strong>
+            You've been invited to join Oversight as a {invitation.role}
           </CardDescription>
         </CardHeader>
 

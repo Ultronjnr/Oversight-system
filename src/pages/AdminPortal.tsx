@@ -528,6 +528,117 @@ const AdminPortal = () => {
             </Card>
           </TabsContent>
 
+          {/* Manage Invitations Tab */}
+          <TabsContent value="invitations" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Manage Invitations</h2>
+                <p className="text-muted-foreground mt-1">View and manage pending invitations</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={cleanupExpiredInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  {isCleaningUp ? 'Cleaning...' : 'Clean Expired'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={cleanupUnconfirmedInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  <Trash className="h-4 w-4" />
+                  {isCleaningUp ? 'Cleaning...' : 'Clean Unconfirmed'}
+                </Button>
+                <Button
+                  onClick={loadInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            <Card className="glass-card">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-4 font-medium">Email</th>
+                        <th className="text-left p-4 font-medium">Role</th>
+                        <th className="text-left p-4 font-medium">Department</th>
+                        <th className="text-left p-4 font-medium">Status</th>
+                        <th className="text-left p-4 font-medium">Expires</th>
+                        <th className="text-left p-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invitations.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                            No invitations found
+                          </td>
+                        </tr>
+                      ) : (
+                        invitations.map(invitation => (
+                          <tr key={invitation.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-4">
+                              <div className="font-medium">{invitation.email}</div>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getRoleColor(invitation.role)}>{invitation.role}</Badge>
+                            </td>
+                            <td className="p-4">{invitation.department || '-'}</td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                {invitation.status === 'accepted' && (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <Badge className="bg-green-100 text-green-800">Accepted</Badge>
+                                  </>
+                                )}
+                                {invitation.status === 'pending' && (
+                                  <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+                                )}
+                                {invitation.status === 'expired' && (
+                                  <Badge className="bg-red-100 text-red-800">Expired</Badge>
+                                )}
+                                {invitation.status === 'cancelled' && (
+                                  <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4 text-sm text-muted-foreground">
+                              {new Date(invitation.expires_at).toLocaleDateString()}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600"
+                                  onClick={() => deleteInvitation(invitation.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Email Center Tab */}
           <TabsContent value="emails" className="space-y-6">
             <div className="flex justify-between items-center">

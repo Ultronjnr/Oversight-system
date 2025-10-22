@@ -82,7 +82,7 @@ const FinancePortal = () => {
 
   const updateQuoteStatus = async (quoteId: string, status: 'Approved' | 'Declined') => {
     try {
-      const updatedQuote = await QuoteService.updateQuoteStatus(undefined, undefined, status, {
+      const updatedQuote = await QuoteService.updateQuoteStatus(quoteId, undefined, status, {
         history: [
           {
             status: `Finance ${status}`,

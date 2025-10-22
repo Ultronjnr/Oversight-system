@@ -236,12 +236,30 @@ const SuperAdminPanel = () => {
       ])
         .then((result) => {
           console.log('✅ Email send result:', result);
-          emitInvitationEvent({
-            email: inviteForm.email,
-            role: inviteForm.role,
-            status: 'sent',
-            message: `Email sent successfully via ${result.data?.provider || 'Resend'}`
-          });
+          const responseData = result?.data || result;
+          const success = responseData?.success !== false;
+
+          if (success) {
+            emitInvitationEvent({
+              email: inviteForm.email,
+              role: inviteForm.role,
+              status: 'sent',
+              message: `Email sent successfully via ${responseData?.provider || 'Resend'}`
+            });
+          } else {
+            emitInvitationEvent({
+              email: inviteForm.email,
+              role: inviteForm.role,
+              status: 'failed',
+              message: 'Failed to send email',
+              error: responseData?.error || 'Unknown error'
+            });
+            toast({
+              title: 'Email Send Issue',
+              description: responseData?.error || 'Invitation created but email sending failed.',
+              variant: 'destructive'
+            });
+          }
         })
         .catch((error) => {
           console.error('❌ Email send error:', error);
@@ -249,7 +267,7 @@ const SuperAdminPanel = () => {
             email: inviteForm.email,
             role: inviteForm.role,
             status: 'failed',
-            message: 'Failed to send email - check debug log',
+            message: 'Failed to send email - timeout or network error',
             error: error.message
           });
           console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });

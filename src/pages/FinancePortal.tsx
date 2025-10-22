@@ -10,47 +10,57 @@ const FinancePortal = () => {
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<any[]>([]);
   const [myQuotes, setMyQuotes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadQuotes();
+    if (user?.id) {
+      loadQuotes();
+    }
   }, [user]);
 
-  const loadQuotes = () => {
-    const savedQuotes = localStorage.getItem('quotes');
-    if (savedQuotes) {
-      const allQuotes = JSON.parse(savedQuotes);
-      
-      // Quotes that need Finance review (HOD approved or escalated)
-      const pendingQuotes = allQuotes.filter((quote: any) => 
-        (quote.hodStatus === 'Approved' || quote.requestedByRole === 'Employee') && 
-        quote.financeStatus === 'Pending' &&
-        quote.requestedBy !== user?.id
-      );
-      
-      // Quotes submitted by this Finance user
-      const financeQuotes = allQuotes.filter((quote: any) => quote.requestedBy === user?.id);
-      
-      setQuotes(pendingQuotes);
-      setMyQuotes(financeQuotes);
+  const loadQuotes = async () => {
+    try {
+      setIsLoading(true);
+      // Get quotes pending Finance review
+      const pendingQuotes = await QuoteService.getQuotesForFinance();
+
+      // Get Finance user's own quotes
+      const financeQuotes = await QuoteService.getQuotesForEmployee(user!.id);
+
+      setQuotes(pendingQuotes || []);
+      setMyQuotes(financeQuotes || []);
+    } catch (error) {
+      console.error('Error loading quotes:', error);
+      toast({
+        title: "Error Loading Quotes",
+        description: "Failed to load quotes.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSubmitQuote = (newQuote: any) => {
-    const savedQuotes = localStorage.getItem('quotes');
-    const allQuotes = savedQuotes ? JSON.parse(savedQuotes) : [];
-    
-    // Route the quote through the approval process
-    const routedQuote = QuoteService.routeQuoteRequest(newQuote, user?.role || 'Finance');
-    
-    allQuotes.push(routedQuote);
-    localStorage.setItem('quotes', JSON.stringify(allQuotes));
-    
-    setMyQuotes(prev => [...prev, routedQuote]);
-    
-    toast({
-      title: "Quote Submitted",
-      description: "Your quote request has been submitted for approval.",
-    });
+  const handleSubmitQuote = async (newQuote: any) => {
+    try {
+      const routedQuote = QuoteService.routeQuoteRequest(newQuote, user?.role || 'Finance');
+      const createdQuote = await QuoteService.createQuote(routedQuote);
+
+      if (createdQuote) {
+        setMyQuotes(prev => [...prev, createdQuote]);
+        toast({
+          title: "Quote Submitted",
+          description: "Your quote request has been submitted for approval.",
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      toast({
+        title: "Submission failed",
+        description: "Failed to submit quote request.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleApprove = (quoteId: string) => {
@@ -70,30 +80,29 @@ const FinancePortal = () => {
     });
   };
 
-  const updateQuoteStatus = (quoteId: string, status: 'Approved' | 'Declined') => {
-    const savedQuotes = localStorage.getItem('quotes');
-    if (savedQuotes) {
-      const allQuotes = JSON.parse(savedQuotes);
-      const updatedQuotes = allQuotes.map((quote: any) => {
-        if (quote.id === quoteId) {
-          return {
-            ...quote,
-            financeStatus: status,
-            history: [
-              ...quote.history,
-              {
-                status: `Finance ${status}`,
-                date: new Date(),
-                by: user?.email,
-              }
-            ]
-          };
-        }
-        return quote;
+  const updateQuoteStatus = async (quoteId: string, status: 'Approved' | 'Declined') => {
+    try {
+      const updatedQuote = await QuoteService.updateQuoteStatus(undefined, undefined, status, {
+        history: [
+          {
+            status: `Finance ${status}`,
+            date: new Date().toISOString(),
+            by: user?.email,
+          }
+        ]
       });
-      
-      localStorage.setItem('quotes', JSON.stringify(updatedQuotes));
-      loadQuotes(); // Reload to update the display
+
+      if (updatedQuote) {
+        // Reload to update the display
+        await loadQuotes();
+      }
+    } catch (error) {
+      console.error('Error updating quote status:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update quote status.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -288,8 +288,19 @@ const InviteSignup = () => {
           </CardTitle>
 
           <CardDescription className="text-gray-600">
-            You've been invited to join Oversight as a <strong>{invitation.role}</strong>
-            {invitation.department && <span> in the <strong>{invitation.department}</strong> department</span>}
+            {invitation.role === 'HOD' && (
+              <>You've been invited to join Oversight as a <strong>Head of Department</strong> administrator in the <strong>{invitation.department}</strong> department. As a HOD, you'll have authority to approve or decline quotes submitted by your department.</>
+            )}
+            {invitation.role === 'Finance' && (
+              <>You've been invited to join Oversight as a <strong>Finance Officer</strong> with access to the Finance portal. You'll manage financial approvals across departments in the <strong>{invitation.department}</strong> department.</>
+            )}
+            {invitation.role === 'Employee' && (
+              <>You've been invited to join Oversight as an <strong>Employee</strong> in the <strong>{invitation.department || 'your'}</strong> department. You'll be able to submit and track quotes through our approval system.</>
+            )}
+            {!['HOD', 'Finance', 'Employee'].includes(invitation.role) && (
+              <>You've been invited to join Oversight as a <strong>{invitation.role}</strong>
+                {invitation.department && <span> in the <strong>{invitation.department}</strong> department</span>}</>
+            )}
           </CardDescription>
         </CardHeader>
 

@@ -222,17 +222,18 @@ const InviteSignup = () => {
         console.log('📝 Saving profile in background...');
         supabase
           .from('users')
-          .insert({
+          .upsert({
             id: authData.session.user.id,
             email: invitation.email,
             role: invitation.role,
             name: formData.name,
             department: invitation.department || null,
-            permissions: invitation.permissions || []
-          })
+            permissions: invitation.permissions || [],
+            profile_completed: true
+          }, { onConflict: 'id' })
           .select('id')
           .single()
-          .then(() => console.log('✅ Profile saved'))
+          .then(() => console.log('✅ Profile saved with completion status'))
           .catch((err) => console.warn('⚠️ Profile save failed (non-critical):', err.message));
       }
 

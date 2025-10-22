@@ -202,6 +202,10 @@ export class QuoteService {
     updatedData?: any
   ): Promise<Quote | null> {
     try {
+      if (!quoteId) {
+        throw new Error('Quote ID is required');
+      }
+
       console.log('📝 Updating quote status:', { quoteId, hodStatus, financeStatus });
 
       const updateObj: any = {};

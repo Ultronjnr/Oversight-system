@@ -137,17 +137,24 @@ async function sendWithResend(to: string, subject: string, html: string): Promis
 function getDiagnosticMessage(statusCode: number, body: string): string {
   switch (statusCode) {
     case 401:
-      return 'RESEND_API_KEY is invalid or expired. Check Resend dashboard and update in Supabase Functions → Settings'
+      return 'RESEND_API_KEY is invalid or expired. Check Resend dashboard and update in Supabase Functions → Settings → Environment Variables'
     case 403:
-      return 'Sender email is not verified in Resend. Go to Resend Dashboard → Verified Domains & Senders to verify'
+      return 'Sender email is not verified in Resend. Go to Resend Dashboard → Sender Identity to verify the email. Then set EMAIL_FROM environment variable in Supabase Functions → Settings'
+    case 404:
+      return 'Email endpoint not found. Verify RESEND_API_KEY is correct.'
     case 422:
-      return 'Invalid email format or domain issue. Check the email address and verify sender domain in Resend'
+      return 'Invalid email format or unverified sender domain. Make sure: 1) Recipient email is valid, 2) EMAIL_FROM is a verified sender in Resend'
     case 429:
-      return 'Rate limit exceeded. Too many requests to Resend API'
+      return 'Rate limit exceeded on Resend API. Wait a few moments and try again'
     case 500:
       return 'Resend service error. Try again in a few moments'
     default:
-      return `Resend API error (${statusCode}): ${body.substring(0, 200)}`
+      try {
+        const parsed = JSON.parse(body)
+        return `Resend error: ${parsed.message || parsed.error || body.substring(0, 200)}`
+      } catch {
+        return `Resend API error (${statusCode}): ${body.substring(0, 200)}`
+      }
   }
 }
 

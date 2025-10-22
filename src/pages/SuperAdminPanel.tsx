@@ -222,24 +222,20 @@ const SuperAdminPanel = () => {
         setTimeout(() => reject(new Error('Email send timeout')), 30000)
       );
 
-      Promise.race([
-        supabase.functions.invoke('send-invitation-email', {
-          body: {
-            email: inviteForm.email,
-            role: inviteForm.role,
-            department: inviteForm.department,
-            inviterEmail: user?.email || 'admin@oversight.local',
-            inviteLink
-          }
-        }),
-        emailTimeout
-      ])
+      supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: inviteForm.email,
+          role: inviteForm.role,
+          department: inviteForm.department,
+          inviterEmail: user?.email || 'admin@oversight.local',
+          inviteLink
+        }
+      })
         .then((result) => {
           console.log('✅ Email send result:', result);
-          const responseData = result?.data || result;
-          const success = responseData?.success !== false;
+          const responseData = result?.data || {};
 
-          if (success) {
+          if (responseData?.success) {
             emitInvitationEvent({
               email: inviteForm.email,
               role: inviteForm.role,
@@ -267,13 +263,13 @@ const SuperAdminPanel = () => {
             email: inviteForm.email,
             role: inviteForm.role,
             status: 'failed',
-            message: 'Failed to send email - timeout or network error',
+            message: 'Failed to send email',
             error: error.message
           });
           console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
           toast({
             title: 'Email Send Issue',
-            description: 'Invitation created but email sending failed. Check debug log for details.',
+            description: error.message || 'Invitation created but email sending failed.',
             variant: 'destructive'
           });
         });

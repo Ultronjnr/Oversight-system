@@ -66,6 +66,7 @@ const AdminPortal = () => {
     if (canManageUsers()) {
       loadUsers();
       loadEmailTemplates();
+      loadInvitations();
     }
   }, []);
 

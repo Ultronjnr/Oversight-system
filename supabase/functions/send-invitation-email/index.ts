@@ -22,12 +22,15 @@ interface ResendResponse {
 async function sendWithResend(to: string, subject: string, html: string): Promise<ResendResponse> {
   const apiKey = Deno.env.get('RESEND_API_KEY')
   const from = Deno.env.get('EMAIL_FROM') || 'noreply@oversight.local'
+  const emailFromEnvVar = Deno.env.get('EMAIL_FROM')
 
   // Diagnostic checks
   const diagnostics = {
     apiKeyLength: apiKey?.length || 0,
     apiKeyValid: apiKey ? (apiKey.startsWith('re_') && apiKey.length > 20) : false,
-    fromEmailSet: !!from,
+    fromEmailSet: !!emailFromEnvVar,
+    fromEmail: from,
+    usingDefaultDomain: !emailFromEnvVar,
   }
 
   if (!apiKey) {

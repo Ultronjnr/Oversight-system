@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Users, Mail, Settings, Shield, Send, UserPlus, Eye, Trash2 } from 'lucide-react';
+import { Users, Mail, Settings, Shield, Send, UserPlus, Eye, Trash2, CheckCircle, Clock, Trash } from 'lucide-react';
 
 interface User {
   id: string;

@@ -217,26 +217,44 @@ const SuperAdminPanel = () => {
         message: 'Sending email via Resend...'
       });
 
-      supabase.functions.invoke('send-invitation-email', {
-        body: {
-          email: inviteForm.email,
-          role: inviteForm.role,
-          department: inviteForm.department,
-          inviterEmail: user?.email || 'admin@oversight.local',
-          inviteLink
-        }
-      })
+      // Use a timeout to prevent hanging promises
+      const emailTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email send timeout')), 30000)
+      );
+
+      Promise.race([
+        supabase.functions.invoke('send-invitation-email', {
+          body: {
+            email: inviteForm.email,
+            role: inviteForm.role,
+            department: inviteForm.department,
+            inviterEmail: user?.email || 'admin@oversight.local',
+            inviteLink
+          }
+        }),
+        emailTimeout
+      ])
         .then((result) => {
-          console.log('Email send result:', result);
+          console.log('✅ Email send result:', result);
           emitInvitationEvent({
             email: inviteForm.email,
             role: inviteForm.role,
             status: 'sent',
             message: `Email sent successfully via ${result.data?.provider || 'Resend'}`
           });
+
+          // Update invitation status to accepted if email was sent
+          const sentInvite = invites.find(inv => inv.email === inviteForm.email && inv.status === 'pending');
+          if (sentInvite && !sentInvite.id.startsWith('temp_')) {
+            supabase
+              .from('invitations')
+              .update({ status: 'accepted' })
+              .eq('id', sentInvite.id)
+              .catch(err => console.warn('Could not update status:', err));
+          }
         })
         .catch((error) => {
-          console.error('Email send error:', error);
+          console.error('❌ Email send error:', error);
           emitInvitationEvent({
             email: inviteForm.email,
             role: inviteForm.role,

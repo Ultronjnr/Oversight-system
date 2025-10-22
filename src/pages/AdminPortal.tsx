@@ -127,6 +127,116 @@ const AdminPortal = () => {
     setEmailTemplates(mockTemplates);
   };
 
+  const loadInvitations = async () => {
+    try {
+      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+        .from('invitations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setInvitations(data || []);
+    } catch (error) {
+      console.error('Error loading invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load invitations',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const cleanupExpiredInvitations = async () => {
+    setIsCleaningUp(true);
+    try {
+      const now = new Date();
+      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+        .from('invitations')
+        .delete()
+        .lt('expires_at', now.toISOString())
+        .select('id');
+
+      if (error) throw error;
+
+      const deletedCount = data?.length || 0;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Cleanup Complete',
+        description: `${deletedCount} expired invitations have been removed.`,
+      });
+    } catch (error) {
+      console.error('Error cleaning up invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cleanup invitations',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
+  const cleanupUnconfirmedInvitations = async () => {
+    setIsCleaningUp(true);
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+        .from('invitations')
+        .delete()
+        .eq('status', 'pending')
+        .lt('created_at', sevenDaysAgo.toISOString())
+        .select('id');
+
+      if (error) throw error;
+
+      const deletedCount = data?.length || 0;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Cleanup Complete',
+        description: `${deletedCount} unconfirmed invitations older than 7 days have been removed.`,
+      });
+    } catch (error) {
+      console.error('Error cleaning up unconfirmed invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cleanup unconfirmed invitations',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
+  const deleteInvitation = async (invitationId: string) => {
+    try {
+      const { error } = await (await import('../lib/supabaseClient')).supabase
+        .from('invitations')
+        .delete()
+        .eq('id', invitationId);
+
+      if (error) throw error;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Success',
+        description: 'Invitation has been deleted.',
+      });
+    } catch (error) {
+      console.error('Error deleting invitation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete invitation',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleAddUser = () => {
     if (!newUser.name || !newUser.email) {
       toast({

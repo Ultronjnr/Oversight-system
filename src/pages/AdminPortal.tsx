@@ -130,7 +130,7 @@ const AdminPortal = () => {
 
   const loadInvitations = async () => {
     try {
-      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+      const { data, error } = await supabase
         .from('invitations')
         .select('*')
         .order('created_at', { ascending: false });
@@ -152,7 +152,7 @@ const AdminPortal = () => {
     setIsCleaningUp(true);
     try {
       const now = new Date();
-      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+      const { data, error } = await supabase
         .from('invitations')
         .delete()
         .lt('expires_at', now.toISOString())
@@ -184,7 +184,7 @@ const AdminPortal = () => {
     setIsCleaningUp(true);
     try {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const { data, error } = await (await import('../lib/supabaseClient')).supabase
+      const { data, error } = await supabase
         .from('invitations')
         .delete()
         .eq('status', 'pending')
@@ -215,7 +215,7 @@ const AdminPortal = () => {
 
   const deleteInvitation = async (invitationId: string) => {
     try {
-      const { error } = await (await import('../lib/supabaseClient')).supabase
+      const { error } = await supabase
         .from('invitations')
         .delete()
         .eq('id', invitationId);

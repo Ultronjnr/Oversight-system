@@ -364,13 +364,17 @@ const AdminPortal = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Management
             </TabsTrigger>
-            <TabsTrigger value="emails" className="flex items-center gap-2">
+            <TabsTrigger value="invitations" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
+              Manage Invitations
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
               Email Center
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">

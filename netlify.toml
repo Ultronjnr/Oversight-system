@@ -1,8 +1,8 @@
 # Netlify configuration for Oversight Procurement Management System
 
 [build]
-  # Build command - explicitly install dependencies then build
-  command = "npm install && npm run build"
+  # Build command - use bun instead of npm (project uses Bun package manager)
+  command = "bun install && bun run build"
   # Publish directory - where Vite outputs the built files
   publish = "dist"
   # Node version

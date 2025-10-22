@@ -1,8 +1,8 @@
 # Netlify configuration for Oversight Procurement Management System
 
 [build]
-  # Build command - uses npm to build the Vite app
-  command = "npm run build"
+  # Build command - explicitly install dependencies then build
+  command = "npm install && npm run build"
   # Publish directory - where Vite outputs the built files
   publish = "dist"
   # Node version

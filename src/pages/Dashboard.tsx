@@ -35,43 +35,43 @@ const Dashboard = () => {
   const [isFinancePRsOpen, setIsFinancePRsOpen] = useState(false);
 
   useEffect(() => {
-    // Clean up any duplicate IDs first
-    const hadDuplicates = cleanupDuplicateIds();
-    if (hadDuplicates) {
-      console.log('Fixed duplicate IDs in data');
+    if (user?.id) {
+      loadPurchaseRequisitions();
     }
+  }, [user, userRole]);
 
-    loadPurchaseRequisitions();
-  }, [user]);
+  const loadPurchaseRequisitions = async () => {
+    try {
+      if (!user?.id) return;
 
-  const loadPurchaseRequisitions = () => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    if (savedPRs) {
-      const prData = JSON.parse(savedPRs);
-      setAllPurchaseRequisitions(prData);
+      // Load user's own PRs
+      const userPRs = await prService.getUserPurchaseRequisitions(user.id);
+      setMyPurchaseRequisitions(userPRs || []);
+      setMyOriginalPRs(userPRs || []);
 
-      // My PRs - PRs submitted by current user
-      const userPRs = prData.filter((pr: any) => pr.requestedBy === user?.id);
-      setMyPurchaseRequisitions(userPRs);
-      setMyOriginalPRs(userPRs); // Keep original data for stats
-
-      // HOD: Pending employee PRs
-      if (userRole === 'HOD') {
-        const pendingPRs = prData.filter((pr: any) =>
-          pr.requestedByRole === 'Employee' && pr.hodStatus === 'Pending'
-        );
-        setPendingEmployeePRs(pendingPRs);
+      // Load role-specific PRs
+      if (userRole === 'HOD' && user.department) {
+        const hodPRs = await prService.getHODPendingPRs(user.department);
+        setPendingEmployeePRs(hodPRs || []);
       }
 
-      // Finance: PRs for final approval
       if (userRole === 'Finance') {
-        const financePRs = prData.filter((pr: any) =>
-          (pr.hodStatus === 'Approved' || pr.requestedByRole === 'Employee') &&
-          pr.financeStatus === 'Pending' &&
-          pr.requestedBy !== user?.id
-        );
-        setFinanceApprovalPRs(financePRs);
+        const financePRs = await prService.getFinancePendingPRs();
+        setFinanceApprovalPRs(financePRs || []);
       }
+
+      // Load all PRs for stats/admin view
+      if (userRole === 'Admin' || userRole === 'SuperUser') {
+        const allPRs = await prService.getAllPurchaseRequisitions();
+        setAllPurchaseRequisitions(allPRs || []);
+      }
+    } catch (error) {
+      console.error('Error loading PRs:', error);
+      toast({
+        title: "Error Loading Data",
+        description: "Failed to load purchase requisitions.",
+        variant: "destructive"
+      });
     }
   };
 

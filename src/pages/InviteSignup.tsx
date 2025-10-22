@@ -69,13 +69,13 @@ const InviteSignup = () => {
 
       const timeoutPromise = new Promise<any>((resolve) => {
         setTimeout(() => {
-          console.warn('⏱️ Verification timeout - showing form anyway');
+          console.warn('⏱️ Verification timeout after 15 seconds');
           resolve({ timedOut: true });
-        }, 5000);
+        }, 15000);
       });
 
       const verificationPromise = supabase.functions.invoke('verify-invitation', {
-        body: { token, email },
+        body: { token, email: email.toLowerCase() },
         headers: { 'Content-Type': 'application/json' }
       }).then(result => ({ ...result, timedOut: false }));
 
@@ -85,7 +85,22 @@ const InviteSignup = () => {
       ]);
 
       if (result.timedOut) {
-        console.warn('⚠️ Verification timed out, allowing user to proceed');
+        console.warn('⚠️ Verification timed out, attempting direct database query');
+        const { data: fallbackData } = await supabase
+          .from('invitations')
+          .select('id, email, role, department, status, expires_at, token, created_at')
+          .eq('token', token)
+          .eq('email', email.toLowerCase())
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (fallbackData) {
+          console.log('✅ Found invitation via fallback query:', { role: fallbackData.role });
+          setInvitation(fallbackData);
+          return;
+        }
+
+        console.warn('⚠️ No invitation found, using default');
         setInvitation({
           id: `fallback_${Date.now()}`,
           email,
@@ -102,12 +117,26 @@ const InviteSignup = () => {
 
       console.log('📡 Edge Function response:', {
         success: responseData?.success,
+        hasData: !!responseData?.data,
         error: functionError?.message,
-        status: responseData?.status
       });
 
       if (functionError) {
         console.error('❌ Edge Function invocation error:', functionError);
+        const { data: fallbackData } = await supabase
+          .from('invitations')
+          .select('id, email, role, department, status, expires_at, token, created_at')
+          .eq('token', token)
+          .eq('email', email.toLowerCase())
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (fallbackData) {
+          console.log('✅ Found invitation via fallback query after error:', { role: fallbackData.role });
+          setInvitation(fallbackData);
+          return;
+        }
+
         setInvitation({
           id: `fallback_${Date.now()}`,
           email,
@@ -121,13 +150,27 @@ const InviteSignup = () => {
       }
 
       if (responseData?.success && responseData?.data) {
-        console.log('✅ Invitation verified successfully');
+        console.log('✅ Invitation verified successfully:', { role: responseData.data.role });
         setInvitation(responseData.data);
         return;
       }
 
       if (!responseData?.success) {
-        console.error('❌ Verification failed:', responseData?.error);
+        console.warn('⚠️ Verification failed, checking database directly:', responseData?.error);
+        const { data: fallbackData } = await supabase
+          .from('invitations')
+          .select('id, email, role, department, status, expires_at, token, created_at')
+          .eq('token', token)
+          .eq('email', email.toLowerCase())
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (fallbackData) {
+          console.log('✅ Found invitation via fallback query:', { role: fallbackData.role });
+          setInvitation(fallbackData);
+          return;
+        }
+
         setInvitation({
           id: `fallback_${Date.now()}`,
           email,
@@ -141,6 +184,24 @@ const InviteSignup = () => {
       }
     } catch (error: any) {
       console.error('❌ Unexpected error:', error.message);
+      try {
+        const { data: fallbackData } = await supabase
+          .from('invitations')
+          .select('id, email, role, department, status, expires_at, token, created_at')
+          .eq('token', token)
+          .eq('email', email?.toLowerCase())
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (fallbackData) {
+          console.log('✅ Recovered invitation from fallback query:', { role: fallbackData.role });
+          setInvitation(fallbackData);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback query also failed:', fallbackError);
+      }
+
       setInvitation({
         id: `fallback_${Date.now()}`,
         email: email || 'user@example.com',

@@ -37,13 +37,15 @@ const Login = () => {
           const user = JSON.parse(userStr);
           // Redirect to role-specific portal
           if (user.role === 'HOD') {
-            redirectPath = '/hod-portal';
+            redirectPath = '/hod/portal';
           } else if (user.role === 'Finance') {
-            redirectPath = '/finance-portal';
+            redirectPath = '/finance/portal';
           } else if (user.role === 'Employee') {
-            redirectPath = '/employee-portal';
-          } else if (user.role === 'SuperUser' || user.role === 'Admin') {
-            redirectPath = '/admin-portal';
+            redirectPath = '/employee/portal';
+          } else if (user.role === 'SuperUser') {
+            redirectPath = '/super-admin';
+          } else if (user.role === 'Admin') {
+            redirectPath = '/admin/portal';
           }
         } catch (err) {
           console.warn('Failed to parse user data:', err);

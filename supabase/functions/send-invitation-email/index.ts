@@ -54,10 +54,19 @@ async function sendWithResend(to: string, subject: string, html: string): Promis
     }
   }
 
+  if (!emailFromEnvVar) {
+    console.warn('⚠️  WARNING: EMAIL_FROM environment variable not set!', {
+      message: 'Using default domain: noreply@oversight.local',
+      hint: 'This domain must be verified in Resend dashboard for emails to deliver',
+      solution: 'Set EMAIL_FROM to a verified sender email in Supabase Functions → Settings → Environment Variables'
+    })
+  }
+
   console.log('✅ Environment variables configured:', {
     apiKeyLength: apiKey.length,
     apiKeyPrefix: apiKey.substring(0, 10) + '...',
     fromEmail: from,
+    emailFromConfigured: !!emailFromEnvVar,
   })
 
   console.log('📧 Attempting to send email via Resend:', {

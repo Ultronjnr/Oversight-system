@@ -146,14 +146,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('user');
     try {
       await supabase.auth.signOut();
     } catch (error) {
       console.warn('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      // Use window.location to do a full page reload to the login page
+      window.location.href = window.location.origin + '/login';
     }
-    window.location.href = '/login';
   };
 
   return (

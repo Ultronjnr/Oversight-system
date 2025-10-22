@@ -42,6 +42,8 @@ const AdminPortal = () => {
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   
   // New User Form
   const [newUser, setNewUser] = useState({

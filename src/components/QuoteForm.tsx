@@ -10,7 +10,7 @@ import { Calendar, Upload, FileText, X, Hash } from 'lucide-react';
 import { generateTransactionId } from '../lib/transactionUtils';
 
 interface QuoteFormProps {
-  onSubmit: (quote: any) => void;
+  onSubmit: (quote: any) => Promise<void>;
 }
 
 const QuoteForm = ({ onSubmit }: QuoteFormProps) => {
@@ -29,52 +29,38 @@ const QuoteForm = ({ onSubmit }: QuoteFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
-      // Create FormData for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('date', formData.date);
-      formDataToSend.append('item', formData.item);
-      formDataToSend.append('amount', formData.amount);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('comment', formData.comment);
-      formDataToSend.append('requestedBy', user?.id || '');
-      formDataToSend.append('requestedByName', user?.name || '');
-      formDataToSend.append('requestedByRole', user?.role || '');
-      
-      if (formData.sourceDocument) {
-        formDataToSend.append('sourceDocument', formData.sourceDocument);
+      if (!user?.id) {
+        throw new Error('User not authenticated');
       }
 
-      // TODO: Replace with actual API call
-      // const result = await apiService.createQuote(formDataToSend);
-      
-      // For now, use the existing mock logic
       const quote = {
-        id: Date.now().toString(),
-        transactionId,
-        ...formData,
-        requestedBy: user?.id,
-        requestedByName: user?.name,
-        requestedByRole: user?.role,
-        hodStatus: 'Pending',
-        financeStatus: 'Pending',
+        date: formData.date,
+        item: formData.item,
+        amount: formData.amount,
+        description: formData.description,
+        comment: formData.comment,
+        requestedBy: user.id,
+        requestedByName: user.name,
+        requestedByRole: user.role,
+        requestedByDepartment: user.department,
+        hodStatus: 'Pending' as const,
+        financeStatus: 'Pending' as const,
         history: [
           {
             status: 'Submitted',
-            date: new Date(),
-            by: user?.email,
-            transactionId,
+            date: new Date().toISOString(),
+            by: user.email,
           }
         ],
-        createdAt: new Date(),
         documentName: formData.sourceDocument?.name,
         documentType: formData.sourceDocument?.type,
         documentUrl: formData.sourceDocument ? URL.createObjectURL(formData.sourceDocument) : undefined,
       };
-      
-      onSubmit(quote);
-      
+
+      await onSubmit(quote);
+
       // Reset form
       setFormData({
         date: new Date().toISOString().split('T')[0],
@@ -84,10 +70,10 @@ const QuoteForm = ({ onSubmit }: QuoteFormProps) => {
         comment: '',
         sourceDocument: null,
       });
-      
+
       toast({
         title: "Quote submitted successfully",
-        description: `Your quote request has been submitted for review. Transaction ID: ${transactionId}`,
+        description: "Your quote request has been submitted for review.",
       });
     } catch (error) {
       console.error('Submit error:', error);

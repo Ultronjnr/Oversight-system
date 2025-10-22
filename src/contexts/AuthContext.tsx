@@ -150,12 +150,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
     } catch (error) {
       console.warn('Logout error:', error);
-    } finally {
-      setUser(null);
-      localStorage.removeItem('user');
-      // Use window.location to do a full page reload to the login page
-      window.location.href = window.location.origin + '/login';
     }
+    // Clear state and storage
+    setUser(null);
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    // Redirect with a full page reload
+    setTimeout(() => {
+      window.location.replace('/login');
+    }, 100);
   };
 
   return (

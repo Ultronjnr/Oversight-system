@@ -9,7 +9,15 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Set a safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (!user) {
+        navigate('/login', { replace: true });
+      }
+    }, 5000);
+
     if (!isLoading) {
+      clearTimeout(safetyTimeout);
       if (user) {
         // Redirect based on user role
         switch (user.role) {
@@ -35,6 +43,8 @@ const Index = () => {
         navigate('/login', { replace: true });
       }
     }
+
+    return () => clearTimeout(safetyTimeout);
   }, [user, isLoading, navigate]);
 
   if (isLoading) {

@@ -147,18 +147,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      // Clear state immediately
+      setUser(null);
+      setIsLoading(false);
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+
+      // Sign out from Supabase
       await supabase.auth.signOut();
+
+      // Force redirect to login with full page reload
+      window.location.href = '/login';
     } catch (error) {
       console.warn('Logout error:', error);
+      // Even if signOut fails, redirect to login
+      window.location.href = '/login';
     }
-    // Clear state and storage
-    setUser(null);
-    localStorage.removeItem('user');
-    sessionStorage.clear();
-    // Redirect with a full page reload
-    setTimeout(() => {
-      window.location.replace('/login');
-    }, 100);
   };
 
   return (

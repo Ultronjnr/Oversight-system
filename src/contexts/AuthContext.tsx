@@ -32,9 +32,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+
         const sUser = data.session?.user;
         if (sUser) {
           // Get user details from public.users table
@@ -44,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq('id', sUser.id)
             .single();
 
-          if (userData && !userError) {
+          if (mounted && userData && !userError) {
             const normalized: User = {
               id: userData.id,
               email: userData.email,
@@ -60,43 +65,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.warn('Auth initialization error:', error);
       }
-      setIsLoading(false);
+      if (mounted) setIsLoading(false);
     };
+
     init();
 
+    // Set up auth state change listener
     try {
-      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!mounted) return;
+
         const sUser = session?.user;
         if (sUser) {
-          // Get user details from public.users table
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', sUser.id)
-            .single();
+          try {
+            // Get user details from public.users table
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', sUser.id)
+              .single();
 
-          if (userData && !userError) {
-            const normalized: User = {
-              id: userData.id,
-              email: userData.email,
-              role: userData.role as User['role'],
-              name: userData.name,
-              department: userData.department,
-              permissions: userData.permissions || [],
-            };
-            setUser(normalized);
-            localStorage.setItem('user', JSON.stringify(normalized));
+            if (mounted && userData && !userError) {
+              const normalized: User = {
+                id: userData.id,
+                email: userData.email,
+                role: userData.role as User['role'],
+                name: userData.name,
+                department: userData.department,
+                permissions: userData.permissions || [],
+              };
+              setUser(normalized);
+              localStorage.setItem('user', JSON.stringify(normalized));
+            }
+          } catch (userError) {
+            console.warn('Error fetching user details:', userError);
           }
         } else {
-          setUser(null);
-          localStorage.removeItem('user');
+          if (mounted) {
+            setUser(null);
+            localStorage.removeItem('user');
+          }
         }
       });
-      return () => sub.subscription.unsubscribe();
+      unsubscribe = data.subscription?.unsubscribe || null;
     } catch (error) {
       console.warn('Auth state change subscription error:', error);
-      return () => { }; // Return empty cleanup function
     }
+
+    return () => {
+      mounted = false;
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (e) {
+          console.warn('Unsubscribe error:', e);
+        }
+      }
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {

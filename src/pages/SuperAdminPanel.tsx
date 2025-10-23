@@ -217,9 +217,9 @@ const SuperAdminPanel = () => {
         message: 'Sending email via Resend...'
       });
 
-      // Use a timeout to prevent hanging promises
+      // Use a timeout to prevent hanging promises (60 seconds for Supabase latency)
       const emailTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Email send timeout')), 30000)
+        setTimeout(() => reject(new Error('Email send timeout')), 60000)
       );
 
       supabase.functions.invoke('send-invitation-email', {

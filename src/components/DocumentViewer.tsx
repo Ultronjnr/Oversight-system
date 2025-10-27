@@ -217,26 +217,38 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
             {renderPreview()}
           </div>
           <div className="flex justify-between items-center mt-6 pt-4 border-t">
-            {downloadError && (
-              <div className="flex items-center text-red-600 text-sm">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Download failed. Please try again.
-              </div>
-            )}
-            {!downloadError && thumbnailLoaded && fileType?.startsWith('image/') && (
-              <div className="flex items-center text-green-600 text-sm">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Image loaded successfully
-              </div>
-            )}
-            <div className="flex-1"></div>
+            <div className="flex-1">
+              {downloadError && (
+                <div className="flex items-center text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium">Download failed</p>
+                    <p className="text-xs mt-1">Please check your internet connection and try again</p>
+                  </div>
+                </div>
+              )}
+              {!downloadError && thumbnailLoaded && fileType?.startsWith('image/') && (
+                <div className="flex items-center text-green-600 text-sm">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Image loaded successfully
+                </div>
+              )}
+            </div>
             <Button
               onClick={handleDownload}
               disabled={isLoading}
-              className="flex items-center bg-blue-600 hover:bg-blue-700"
+              className="ml-4 flex items-center bg-blue-600 hover:bg-blue-700 text-white"
+              size="sm"
             >
               <Download className="h-4 w-4 mr-2" />
-              {isLoading ? 'Downloading...' : 'Download'}
+              {isLoading ? (
+                <>
+                  <span className="animate-spin inline-block mr-2">⏳</span>
+                  Downloading...
+                </>
+              ) : (
+                'Download'
+              )}
             </Button>
           </div>
         </DialogContent>

@@ -2,7 +2,7 @@ import React from 'react';
 import { ReactNode } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, FileText, History, Bell, Shield, Settings } from 'lucide-react';
+import { LogOut, User, History, Bell, Shield, Settings } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import { Link, useLocation } from 'react-router-dom';
 

@@ -63,146 +63,60 @@ const InviteSignup = () => {
         return;
       }
 
-      console.log('🔍 Verifying invitation via Edge Function:', {
-        token: token.substring(0, 10) + '...',
-        email: email.substring(0, 10) + '...'
-      });
+      console.log('🔍 Verifying invitation directly from database...');
 
-      const timeoutPromise = new Promise<any>((resolve) => {
-        setTimeout(() => {
-          console.warn('⏱️ Verification timeout after 5 seconds');
-          resolve({ timedOut: true });
-        }, 5000);
-      });
+      // Use direct database query (faster and more reliable than edge function)
+      const { data: invitationData, error: invitationError } = await supabase
+        .from('invitations')
+        .select('id, email, role, department, status, expires_at, token, created_at')
+        .eq('token', token)
+        .ilike('email', email)
+        .eq('status', 'pending')
+        .maybeSingle();
 
-      const verificationPromise = supabase.functions.invoke('verify-invitation', {
-        body: { token, email: email.toLowerCase() },
-        headers: { 'Content-Type': 'application/json' }
-      }).then(result => ({ ...result, timedOut: false }));
+      if (invitationData) {
+        console.log('✅ Invitation verified successfully:', { role: invitationData.role, expires_at: invitationData.expires_at });
 
-      const result: any = await Promise.race([
-        verificationPromise,
-        timeoutPromise
-      ]);
-
-      if (result.timedOut) {
-        console.warn('⚠️ Verification timed out, attempting direct database query');
-        const { data: fallbackData } = await supabase
-          .from('invitations')
-          .select('id, email, role, department, status, expires_at, token, created_at')
-          .eq('token', token)
-          .ilike('email', email)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        if (fallbackData) {
-          console.log('✅ Found invitation via fallback query:', { role: fallbackData.role });
-          setInvitation(fallbackData);
+        // Check if expired
+        if (new Date(invitationData.expires_at) < new Date()) {
+          console.warn('⚠️ Invitation has expired');
+          setInvitation({
+            id: `expired_${Date.now()}`,
+            email,
+            role: 'Employee',
+            department: null,
+            status: 'expired',
+            expires_at: invitationData.expires_at,
+            created_at: invitationData.created_at
+          });
           return;
         }
 
-        console.warn('⚠️ No invitation found, using default');
-        setInvitation({
-          id: `fallback_${Date.now()}`,
-          email,
-          role: 'Employee',
-          department: null,
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString()
-        });
+        setInvitation(invitationData);
         return;
       }
 
-      const { data: responseData, error: functionError } = result;
+      if (invitationError) {
+        console.warn('⚠️ Invitation query failed:', invitationError.message);
+      } else {
+        console.warn('⚠️ No invitation found');
+      }
 
-      console.log('📡 Edge Function response:', {
-        success: responseData?.success,
-        hasData: !!responseData?.data,
-        error: functionError?.message,
+      // Fallback: allow signup with default Employee role
+      console.log('📋 Using default invitation for email:', email);
+      setInvitation({
+        id: `fallback_${Date.now()}`,
+        email,
+        role: 'Employee',
+        department: null,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString()
       });
-
-      if (functionError) {
-        console.error('❌ Edge Function invocation error:', functionError);
-        const { data: fallbackData } = await supabase
-          .from('invitations')
-          .select('id, email, role, department, status, expires_at, token, created_at')
-          .eq('token', token)
-          .ilike('email', email)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        if (fallbackData) {
-          console.log('✅ Found invitation via fallback query after error:', { role: fallbackData.role });
-          setInvitation(fallbackData);
-          return;
-        }
-
-        setInvitation({
-          id: `fallback_${Date.now()}`,
-          email,
-          role: 'Employee',
-          department: null,
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString()
-        });
-        return;
-      }
-
-      if (responseData?.success && responseData?.data) {
-        console.log('✅ Invitation verified successfully:', { role: responseData.data.role });
-        setInvitation(responseData.data);
-        return;
-      }
-
-      if (!responseData?.success) {
-        console.warn('⚠️ Verification failed, checking database directly:', responseData?.error);
-        const { data: fallbackData } = await supabase
-          .from('invitations')
-          .select('id, email, role, department, status, expires_at, token, created_at')
-          .eq('token', token)
-          .ilike('email', email)
-          .eq('status', 'pending')
-          .maybeSingle();
-
-        if (fallbackData) {
-          console.log('✅ Found invitation via fallback query:', { role: fallbackData.role });
-          setInvitation(fallbackData);
-          return;
-        }
-
-        setInvitation({
-          id: `fallback_${Date.now()}`,
-          email,
-          role: 'Employee',
-          department: null,
-          status: 'pending',
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          created_at: new Date().toISOString()
-        });
-        return;
-      }
     } catch (error: any) {
-      console.error('❌ Unexpected error:', error.message);
-      try {
-        const { data: fallbackData } = await supabase
-          .from('invitations')
-          .select('id, email, role, department, status, expires_at, token, created_at')
-          .eq('token', token)
-          .ilike('email', email || '')
-          .eq('status', 'pending')
-          .maybeSingle();
+      console.error('❌ Verification error:', error.message);
 
-        if (fallbackData) {
-          console.log('✅ Recovered invitation from fallback query:', { role: fallbackData.role });
-          setInvitation(fallbackData);
-          return;
-        }
-      } catch (fallbackError) {
-        console.error('❌ Fallback query also failed:', fallbackError);
-      }
-
+      // Fallback to default invitation
       setInvitation({
         id: `fallback_${Date.now()}`,
         email: email || 'user@example.com',

@@ -21,27 +21,79 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
     setDownloadError(false);
 
     try {
-      if (fileUrl) {
-        const response = await fetch(fileUrl, { mode: 'cors' });
-
-        if (!response.ok) {
-          throw new Error(`Download failed with status ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
+      if (!fileUrl) {
         throw new Error('No file URL available');
       }
-    } catch (error) {
-      console.error('Download failed:', error);
+
+      let blob: Blob;
+      let downloadUrl: string;
+
+      // Handle different URL types
+      if (fileUrl.startsWith('data:')) {
+        // Data URL - convert directly to blob
+        const arr = fileUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+        const bstr = atob(arr[1]);
+        const n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        for (let i = 0; i < n; i++) {
+          u8arr[i] = bstr.charCodeAt(i);
+        }
+        blob = new Blob([u8arr], { type: mime });
+      } else if (fileUrl.startsWith('blob:')) {
+        // Blob URL - fetch it
+        const response = await fetch(fileUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch blob: ${response.status}`);
+        }
+        blob = await response.blob();
+      } else {
+        // Regular URL (Supabase, etc) - fetch with proper headers
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+        try {
+          const response = await fetch(fileUrl, {
+            mode: 'cors',
+            credentials: 'include',
+            signal: controller.signal
+          });
+
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          blob = await response.blob();
+        } catch (fetchError: any) {
+          clearTimeout(timeout);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Download timeout - the file took too long to download');
+          }
+          throw fetchError;
+        }
+      }
+
+      // Create download link and trigger download
+      downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName || 'document';
+
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup after a short delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 100);
+
+      console.log('✅ Download started successfully:', fileName);
+    } catch (error: any) {
+      console.error('❌ Download failed:', error);
       setDownloadError(true);
     } finally {
       setIsLoading(false);

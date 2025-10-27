@@ -245,14 +245,14 @@ const SuperAdminPanel = () => {
 
           if (responseData?.success) {
             emitInvitationEvent({
-              email: inviteForm.email,
+              email,
               role: inviteForm.role,
               status: 'sent',
               message: `Email sent successfully via ${responseData?.provider || 'Resend'}`
             });
           } else {
             emitInvitationEvent({
-              email: inviteForm.email,
+              email,
               role: inviteForm.role,
               status: 'failed',
               message: 'Failed to send email',

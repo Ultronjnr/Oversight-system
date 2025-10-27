@@ -22,7 +22,7 @@ const LogoPreloader = () => {
 
             {/* Logo Image */}
             <img
-              src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fa912afb82de844d88c5e9db4ff8d6ce6?format=webp&width=800"
+              src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
               alt="Oversight Logo"
               className="h-24 w-auto animate-pulse-slow drop-shadow-lg"
               style={{ animation: 'pulse-logo 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}

@@ -76,8 +76,12 @@ const Login = () => {
       <Card className="w-full max-w-md relative z-10 bg-white/80 backdrop-blur-lg border-0 shadow-2xl shadow-blue-500/10 animate-fade-in">
         <CardHeader className="text-center pb-8">
           {/* Logo with Premium Animation */}
-          <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl w-fit shadow-lg shadow-blue-500/25 transform hover:scale-110 transition-all duration-300">
-            <Shield className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-6 transform hover:scale-110 transition-all duration-300">
+            <img
+              src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
+              alt="Oversight Logo"
+              className="h-16 w-auto drop-shadow-lg"
+            />
           </div>
 
           {/* Animated Title */}

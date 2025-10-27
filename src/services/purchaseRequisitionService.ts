@@ -74,8 +74,9 @@ function transformPRData(data: any): PurchaseRequisition {
  * Create a new Purchase Requisition
  */
 export async function createPurchaseRequisition(pr: PurchaseRequisition) {
+  const startTime = performance.now();
   try {
-    console.log('📝 Creating PR in Supabase:', { transactionId: pr.transactionId });
+    console.log('📝 Creating PR in Supabase:', { transactionId: pr.transactionId, timestamp: new Date().toISOString() });
 
     const { data, error } = await supabase
       .from('purchase_requisitions')
@@ -114,10 +115,12 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
       throw error;
     }
 
-    console.log('✅ PR created successfully:', data?.[0]?.id);
+    const duration = performance.now() - startTime;
+    console.log('✅ PR created successfully:', data?.[0]?.id, `(took ${duration.toFixed(2)}ms)`);
     return data?.[0] ? transformPRData(data[0]) : null;
   } catch (error: any) {
-    console.error('❌ Failed to create PR:', error.message);
+    const duration = performance.now() - startTime;
+    console.error('❌ Failed to create PR:', error.message, `(after ${duration.toFixed(2)}ms)`);
     // Fall back to localStorage for offline support
     const savedPRs = localStorage.getItem('purchaseRequisitions');
     const allPRs = savedPRs ? JSON.parse(savedPRs) : [];

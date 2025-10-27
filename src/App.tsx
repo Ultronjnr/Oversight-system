@@ -5,6 +5,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import InviteSignup from "./pages/InviteSignup";
 import NotFound from "./pages/NotFound";
+import LogoPreloader from "./components/LogoPreloader";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Lazy load pages that use heavy dependencies like recharts
@@ -21,15 +22,8 @@ import { Toaster } from "@/components/ui/toaster";
 
 const queryClient = new QueryClient();
 
-// Loading component for lazy-loaded pages
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-    <div className="text-center">
-      <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-      <p className="text-gray-600">Loading...</p>
-    </div>
-  </div>
-);
+// Loading component for lazy-loaded pages - uses Logo Preloader
+const LoadingFallback = () => <LogoPreloader />;
 
 const App = () => {
   console.log('App component rendering...');

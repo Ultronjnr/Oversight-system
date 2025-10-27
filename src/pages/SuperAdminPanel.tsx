@@ -184,24 +184,17 @@ const SuperAdminPanel = () => {
       toast({ title: 'Sending invitation...', description: `Invite sent to ${email}` });
 
       // Insert into Supabase in background
-      const invitationData: any = {
-        email: inviteForm.email.toLowerCase().trim(),
-        role: inviteForm.role,
-        department: inviteForm.department || null,
-        message: inviteForm.message || null,
-        token,
-        status: 'pending',
-        expires_at: expiresAt
-      };
-
-      // Only add invited_by if user is authenticated
-      if (user?.id) {
-        invitationData.invited_by = user.id;
-      }
-
       supabase
         .from('invitations')
-        .insert(invitationData)
+        .insert({
+          email: email.toLowerCase().trim(),
+          role: inviteForm.role,
+          department: inviteForm.department || null,
+          message: inviteForm.message || null,
+          token,
+          status: 'pending',
+          expires_at: expiresAt
+        })
         .select('*')
         .single()
         .then(({ data, error }) => {

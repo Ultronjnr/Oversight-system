@@ -112,7 +112,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       // Validation
       if (!formData.dueDate || !formData.paymentDueDate) {
@@ -131,6 +131,43 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           variant: "destructive",
         });
         return;
+      }
+
+      // Upload file to Supabase storage if provided
+      let documentUrl: string | undefined = undefined;
+      if (formData.sourceDocument) {
+        try {
+          const fileName = `${Date.now()}-${formData.sourceDocument.name}`;
+          const storagePath = `purchase-requisitions/${transactionId}/${fileName}`;
+
+          console.log('📤 Uploading document to Supabase:', storagePath);
+
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .upload(storagePath, formData.sourceDocument);
+
+          if (error) {
+            console.error('❌ Upload error:', error);
+            throw new Error(`Failed to upload document: ${error.message}`);
+          }
+
+          // Get public URL for the uploaded file
+          const { data: publicUrlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(storagePath);
+
+          documentUrl = publicUrlData?.publicUrl;
+          console.log('✅ Document uploaded successfully:', documentUrl);
+        } catch (uploadError: any) {
+          console.error('❌ Document upload failed:', uploadError);
+          toast({
+            title: "Upload Failed",
+            description: uploadError.message || "Could not upload document. Please try again.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const purchaseRequisition = {
@@ -159,9 +196,9 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         createdAt: new Date(),
         documentName: formData.sourceDocument?.name,
         documentType: formData.sourceDocument?.type,
-        documentUrl: formData.sourceDocument ? URL.createObjectURL(formData.sourceDocument) : undefined,
+        documentUrl: documentUrl,
       };
-      
+
       onSubmit(purchaseRequisition);
       
       // Reset form

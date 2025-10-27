@@ -80,14 +80,9 @@ const Login = () => {
             <img
               src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
               alt="Oversight Logo"
-              className="h-16 w-auto drop-shadow-lg"
+              className="h-48 w-auto drop-shadow-lg"
             />
           </div>
-
-          {/* Animated Title */}
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            Oversight
-          </CardTitle>
 
           <CardDescription className="text-gray-600 flex items-center justify-center gap-2">
             <Sparkles className="h-4 w-4 text-blue-500" />

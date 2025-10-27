@@ -340,11 +340,11 @@ const InviteSignup = () => {
 
       <Card className="w-full max-w-md relative z-10 bg-white/80 backdrop-blur-lg border-0 shadow-2xl shadow-blue-500/10 animate-fade-in">
         <CardHeader className="text-center pb-8">
-          <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl w-fit shadow-lg shadow-green-500/25 transform hover:scale-110 transition-all duration-300">
+          <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl w-fit shadow-lg shadow-blue-500/25 transform hover:scale-110 transition-all duration-300">
             <UserPlus className="h-8 w-8 text-white" />
           </div>
 
-          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
             Complete Setup
           </CardTitle>
 
@@ -383,7 +383,7 @@ const InviteSignup = () => {
                   placeholder="Enter your full name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="pl-10 h-12 border-gray-200 focus:border-green-500 focus:ring-green-500/20 rounded-xl transition-all duration-300"
+                  className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 rounded-xl transition-all duration-300"
                   required
                 />
               </div>
@@ -408,7 +408,7 @@ const InviteSignup = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-green-50 rounded-lg transition-all duration-300"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-blue-50 rounded-lg transition-all duration-300"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
@@ -436,7 +436,7 @@ const InviteSignup = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-green-50 rounded-lg transition-all duration-300"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-blue-50 rounded-lg transition-all duration-300"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
@@ -446,7 +446,7 @@ const InviteSignup = () => {
 
             <Button
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-xl shadow-lg shadow-green-500/25 transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -460,25 +460,25 @@ const InviteSignup = () => {
             </Button>
           </form>
 
-          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100/50">
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100/50">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
               <p className="text-sm font-semibold text-gray-700">Invitation Details</p>
             </div>
             <div className="space-y-2 text-xs text-gray-600">
               <div className="flex justify-between items-center py-1">
                 <span className="font-medium">Role:</span>
-                <span className="text-green-600 font-medium">{invitation.role}</span>
+                <span className="text-blue-600 font-medium">{invitation.role}</span>
               </div>
               {invitation.department && (
                 <div className="flex justify-between items-center py-1">
                   <span className="font-medium">Department:</span>
-                  <span className="text-green-600 font-medium">{invitation.department}</span>
+                  <span className="text-blue-600 font-medium">{invitation.department}</span>
                 </div>
               )}
               <div className="flex justify-between items-center py-1">
                 <span className="font-medium">Expires:</span>
-                <span className="text-green-600 font-medium">
+                <span className="text-blue-600 font-medium">
                   {new Date(invitation.expires_at).toLocaleDateString()}
                 </span>
               </div>

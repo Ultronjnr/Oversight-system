@@ -237,13 +237,13 @@ const Dashboard = () => {
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Approved</h3>
             <p className="text-3xl font-bold text-green-600">
-              {myPurchaseRequisitions.filter(pr => pr.finance_status === 'Approved').length}
+              {myPurchaseRequisitions.filter(pr => pr.financeStatus === 'Approved').length}
             </p>
           </div>
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Pending</h3>
             <p className="text-3xl font-bold text-orange-600">
-              {myPurchaseRequisitions.filter(pr => pr.finance_status === 'Pending').length}
+              {myPurchaseRequisitions.filter(pr => pr.financeStatus === 'Pending').length}
             </p>
           </div>
         </div>

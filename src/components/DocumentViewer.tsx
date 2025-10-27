@@ -32,12 +32,15 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
         throw new Error('No file URL available');
       }
 
+      console.log('📥 Starting download:', fileName);
+
       let blob: Blob;
       let downloadUrl: string;
 
       // Handle different URL types
       if (fileUrl.startsWith('data:')) {
         // Data URL - convert directly to blob
+        console.log('📦 Processing data URL');
         const arr = fileUrl.split(',');
         const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
         const bstr = atob(arr[1]);
@@ -49,6 +52,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
         blob = new Blob([u8arr], { type: mime });
       } else if (fileUrl.startsWith('blob:')) {
         // Blob URL - fetch it
+        console.log('🔗 Processing blob URL');
         const response = await fetch(fileUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch blob: ${response.status}`);
@@ -56,6 +60,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
         blob = await response.blob();
       } else {
         // Regular URL (Supabase, etc) - fetch with proper headers
+        console.log('🌐 Fetching from URL:', fileUrl.substring(0, 100) + '...');
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -63,16 +68,20 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
           const response = await fetch(fileUrl, {
             mode: 'cors',
             credentials: 'include',
-            signal: controller.signal
+            signal: controller.signal,
+            headers: {
+              'Accept': fileType || '*/*'
+            }
           });
 
           clearTimeout(timeout);
 
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(`Server returned ${response.status} ${response.statusText}`);
           }
 
           blob = await response.blob();
+          console.log('✅ File fetched successfully, size:', blob.size, 'bytes');
         } catch (fetchError: any) {
           clearTimeout(timeout);
           if (fetchError.name === 'AbortError') {
@@ -87,21 +96,28 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = fileName || 'document';
+      link.style.display = 'none';
 
       // Append to body, click, and remove
       document.body.appendChild(link);
-      link.click();
 
-      // Cleanup after a short delay to ensure download starts
+      // Use setTimeout to ensure browser recognizes the click
       setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
-      }, 100);
+        link.click();
+        console.log('✅ Download triggered:', fileName);
 
-      console.log('✅ Download started successfully:', fileName);
+        // Cleanup after a short delay to ensure download starts
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+          window.URL.revokeObjectURL(downloadUrl);
+        }, 100);
+      }, 0);
+
     } catch (error: any) {
       console.error('❌ Download failed:', error);
-      setDownloadError(true);
+      setDownloadError(error.message || 'Failed to download the document');
     } finally {
       setIsLoading(false);
     }

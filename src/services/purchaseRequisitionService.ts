@@ -290,3 +290,269 @@ export async function getAllPurchaseRequisitions() {
     return savedPRs ? JSON.parse(savedPRs) : [];
   }
 }
+
+/**
+ * Approve a PR (by HOD or Finance)
+ */
+export async function approveRequisition(
+  prId: string,
+  approverRole: 'HOD' | 'Finance',
+  approverName: string,
+  comments?: string
+) {
+  try {
+    console.log('✅ Approving PR:', { prId, approverRole, approverName });
+
+    const updateData: any = {};
+    const timestamp = new Date().toISOString();
+
+    if (approverRole === 'HOD') {
+      updateData.hod_status = 'Approved';
+      updateData.hod_approved_at = timestamp;
+      updateData.hod_approved_by = approverName;
+    } else if (approverRole === 'Finance') {
+      updateData.finance_status = 'Approved';
+      updateData.finance_approved_at = timestamp;
+      updateData.finance_approved_by = approverName;
+    }
+
+    // Add to history
+    const { data: prData, error: fetchError } = await supabase
+      .from('purchase_requisitions')
+      .select('history')
+      .eq('id', prId)
+      .maybeSingle();
+
+    if (!fetchError && prData) {
+      const history = prData.history || [];
+      history.push({
+        action: 'Approved',
+        by: approverName,
+        role: approverRole,
+        timestamp,
+        comments
+      });
+      updateData.history = history;
+    }
+
+    // Update status to fully approved if both HOD and Finance approved
+    if (approverRole === 'HOD') {
+      const { data: checkData } = await supabase
+        .from('purchase_requisitions')
+        .select('finance_status')
+        .eq('id', prId)
+        .maybeSingle();
+
+      if (checkData?.finance_status === 'Approved') {
+        updateData.status = 'Approved';
+      }
+    } else if (approverRole === 'Finance') {
+      const { data: checkData } = await supabase
+        .from('purchase_requisitions')
+        .select('hod_status')
+        .eq('id', prId)
+        .maybeSingle();
+
+      if (checkData?.hod_status === 'Approved') {
+        updateData.status = 'Approved';
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('purchase_requisitions')
+      .update(updateData)
+      .eq('id', prId)
+      .select();
+
+    if (error) {
+      console.error('❌ Error approving PR:', error);
+      throw error;
+    }
+
+    console.log('✅ PR approved successfully');
+    return data?.[0] ? transformPRData(data[0]) : null;
+  } catch (error: any) {
+    console.error('❌ Failed to approve PR:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Reject a PR (by HOD or Finance)
+ */
+export async function rejectRequisition(
+  prId: string,
+  rejectorRole: 'HOD' | 'Finance',
+  rejectorName: string,
+  reason: string
+) {
+  try {
+    console.log('❌ Rejecting PR:', { prId, rejectorRole, rejectorName });
+
+    const updateData: any = {};
+    const timestamp = new Date().toISOString();
+
+    if (rejectorRole === 'HOD') {
+      updateData.hod_status = 'Rejected';
+      updateData.hod_rejected_at = timestamp;
+      updateData.hod_rejected_by = rejectorName;
+    } else if (rejectorRole === 'Finance') {
+      updateData.finance_status = 'Rejected';
+      updateData.finance_rejected_at = timestamp;
+      updateData.finance_rejected_by = rejectorName;
+    }
+
+    updateData.status = 'Rejected';
+
+    // Add to history
+    const { data: prData, error: fetchError } = await supabase
+      .from('purchase_requisitions')
+      .select('history')
+      .eq('id', prId)
+      .maybeSingle();
+
+    if (!fetchError && prData) {
+      const history = prData.history || [];
+      history.push({
+        action: 'Rejected',
+        by: rejectorName,
+        role: rejectorRole,
+        timestamp,
+        reason
+      });
+      updateData.history = history;
+    }
+
+    const { data, error } = await supabase
+      .from('purchase_requisitions')
+      .update(updateData)
+      .eq('id', prId)
+      .select();
+
+    if (error) {
+      console.error('❌ Error rejecting PR:', error);
+      throw error;
+    }
+
+    console.log('✅ PR rejected successfully');
+    return data?.[0] ? transformPRData(data[0]) : null;
+  } catch (error: any) {
+    console.error('❌ Failed to reject PR:', error.message);
+    throw error;
+  }
+}
+
+/**
+ * Split a PR into multiple requisitions
+ */
+export async function splitRequisition(
+  prId: string,
+  splits: Array<{
+    items: any[];
+    totalAmount: number;
+    notes?: string;
+  }>,
+  splitterName: string
+) {
+  try {
+    console.log('📊 Splitting PR:', { prId, numberOfSplits: splits.length });
+
+    // Get original PR
+    const { data: originalPR, error: fetchError } = await supabase
+      .from('purchase_requisitions')
+      .select('*')
+      .eq('id', prId)
+      .maybeSingle();
+
+    if (fetchError || !originalPR) {
+      throw new Error('Could not fetch original PR');
+    }
+
+    // Create new PRs for each split
+    const splitIds: string[] = [];
+    const timestamp = new Date().toISOString();
+
+    for (let i = 0; i < splits.length; i++) {
+      const split = splits[i];
+      const newTransactionId = `${originalPR.transaction_id}-SPLIT-${i + 1}`;
+
+      const { data: newPR, error: insertError } = await supabase
+        .from('purchase_requisitions')
+        .insert({
+          transaction_id: newTransactionId,
+          type: originalPR.type,
+          request_date: originalPR.request_date,
+          due_date: originalPR.due_date,
+          payment_due_date: originalPR.payment_due_date,
+          items: split.items,
+          urgency_level: originalPR.urgency_level,
+          department: originalPR.department,
+          budget_code: originalPR.budget_code,
+          project_code: originalPR.project_code,
+          supplier_preference: originalPR.supplier_preference,
+          delivery_location: originalPR.delivery_location,
+          special_instructions: originalPR.special_instructions,
+          document_name: originalPR.document_name,
+          document_type: originalPR.document_type,
+          document_url: originalPR.document_url,
+          status: 'Draft',
+          hod_status: 'Pending',
+          finance_status: 'Pending',
+          total_amount: split.totalAmount,
+          currency: originalPR.currency,
+          requested_by: originalPR.requested_by,
+          requested_by_name: originalPR.requested_by_name,
+          requested_by_role: originalPR.requested_by_role,
+          requested_by_department: originalPR.requested_by_department,
+          history: [
+            ...originalPR.history,
+            {
+              action: 'Split',
+              by: splitterName,
+              timestamp,
+              parentId: prId,
+              notes: split.notes
+            }
+          ]
+        })
+        .select();
+
+      if (insertError) {
+        console.error('❌ Error creating split PR:', insertError);
+        throw insertError;
+      }
+
+      if (newPR?.[0]?.id) {
+        splitIds.push(newPR[0].id);
+      }
+    }
+
+    // Update original PR to mark as split
+    const { error: updateError } = await supabase
+      .from('purchase_requisitions')
+      .update({
+        status: 'Split',
+        history: [
+          ...originalPR.history,
+          {
+            action: 'Split',
+            by: splitterName,
+            timestamp,
+            splitInto: splitIds
+          }
+        ]
+      })
+      .eq('id', prId);
+
+    if (updateError) {
+      console.error('❌ Error updating original PR:', updateError);
+      throw updateError;
+    }
+
+    console.log('✅ PR split successfully into', splitIds.length, 'new PRs');
+    return splitIds;
+  } catch (error: any) {
+    console.error('❌ Failed to split PR:', error.message);
+    throw error;
+  }
+}

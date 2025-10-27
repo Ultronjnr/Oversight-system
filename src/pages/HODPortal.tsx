@@ -1,39 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import QuoteForm from '../components/QuoteForm';
-import QuoteTable from '../components/QuoteTable';
+import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
+import PurchaseRequisitionTable from '../components/PurchaseRequisitionTable';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { QuoteService } from '../services/quoteService';
+import * as prService from '../services/purchaseRequisitionService';
 
 const HODPortal = () => {
   const { user } = useAuth();
-  const [quotes, setQuotes] = useState<any[]>([]);
-  const [myQuotes, setMyQuotes] = useState<any[]>([]);
+  const [pendingPRs, setPendingPRs] = useState<any[]>([]);
+  const [myPRs, setMyPRs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
-      loadQuotes();
+      loadPurchaseRequisitions();
     }
   }, [user]);
 
-  const loadQuotes = async () => {
+  const loadPurchaseRequisitions = async () => {
     try {
       setIsLoading(true);
-      // Get quotes pending HOD review from department
-      const pendingQuotes = await QuoteService.getQuotesForHOD(user!.id, user?.department);
+      
+      if (user?.department) {
+        const hodPendingPRs = await prService.getHODPendingPRs(user.department);
+        setPendingPRs(hodPendingPRs || []);
+      }
 
-      // Get HOD's own quotes
-      const hodQuotes = await QuoteService.getQuotesForEmployee(user!.id);
-
-      setQuotes(pendingQuotes || []);
-      setMyQuotes(hodQuotes || []);
+      const myPurchaseRequisitions = await prService.getUserPurchaseRequisitions(user!.id);
+      setMyPRs(myPurchaseRequisitions || []);
     } catch (error) {
-      console.error('Error loading quotes:', error);
+      console.error('Error loading PRs:', error);
       toast({
-        title: "Error Loading Quotes",
-        description: "Failed to load quotes.",
+        title: "Error Loading PRs",
+        description: "Failed to load purchase requisitions.",
         variant: "destructive"
       });
     } finally {
@@ -41,98 +41,126 @@ const HODPortal = () => {
     }
   };
 
-  const handleSubmitQuote = async (newQuote: any) => {
+  const handleSubmitPR = async (newPR: any) => {
     try {
-      const routedQuote = QuoteService.routeQuoteRequest(newQuote, user?.role || 'HOD');
-      const createdQuote = await QuoteService.createQuote(routedQuote);
+      const routedPR = {
+        ...newPR,
+        requestedBy: user?.id,
+        requestedByName: user?.name,
+        requestedByRole: user?.role,
+        requestedByDepartment: user?.department,
+        hodStatus: 'Pending',
+        financeStatus: 'Pending',
+        status: 'PENDING_HOD_APPROVAL'
+      };
 
-      if (createdQuote) {
-        setMyQuotes(prev => [...prev, createdQuote]);
+      const createdPR = await prService.createPurchaseRequisition(routedPR);
+      
+      if (createdPR) {
+        setMyPRs(prev => [...prev, createdPR]);
         toast({
-          title: "Quote Submitted",
-          description: "Your quote request has been submitted for approval.",
+          title: "Purchase Requisition Submitted",
+          description: "Your PR has been submitted for approval.",
         });
       }
     } catch (error) {
-      console.error('Error submitting quote:', error);
+      console.error('Error submitting PR:', error);
       toast({
         title: "Submission failed",
-        description: "Failed to submit quote request.",
+        description: "Failed to submit PR.",
         variant: "destructive",
       });
     }
   };
 
-  const handleFinalize = (quoteId: string) => {
-    updateQuoteStatus(quoteId, 'Approved');
-    toast({
-      title: "Report finalized",
-      description: "The quote report has been finalized and sent to Finance for final approval.",
-    });
-  };
-
-  const handleDecline = (quoteId: string) => {
-    updateQuoteStatus(quoteId, 'Declined');
-    toast({
-      title: "Quote declined",
-      description: "The quote has been declined.",
-      variant: "destructive",
-    });
-  };
-
-  const updateQuoteStatus = async (quoteId: string, status: 'Approved' | 'Declined') => {
+  const handleHODFinalize = async (prId: string, finalizationData: any) => {
     try {
-      const updatedQuote = await QuoteService.updateQuoteStatus(quoteId, status, undefined, {
-        history: [
-          {
-            status: `HOD ${status}`,
-            date: new Date().toISOString(),
-            by: user?.email,
-          }
-        ]
+      const approveStatus = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
+      
+      await prService.updatePRStatus(prId, approveStatus, undefined, {
+        history: [{
+          status: `HOD ${approveStatus}`,
+          date: new Date().toISOString(),
+          by: user?.email,
+          action: approveStatus === 'Approved' ? 'HOD_FINALIZE' : 'HOD_DECLINE',
+          comments: finalizationData.comments
+        }]
       });
 
-      if (updatedQuote) {
-        // Reload to update the display
-        await loadQuotes();
-      }
+      await loadPurchaseRequisitions();
+      
+      toast({
+        title: approveStatus === 'Approved' ? "PR Finalized" : "PR Declined",
+        description: approveStatus === 'Approved'
+          ? "The purchase requisition has been finalized and sent to Finance."
+          : "The purchase requisition has been declined.",
+        variant: approveStatus === 'Approved' ? "default" : "destructive"
+      });
     } catch (error) {
-      console.error('Error updating quote status:', error);
+      console.error('Error finalizing PR:', error);
       toast({
         title: "Update failed",
-        description: "Failed to update quote status.",
+        description: "Failed to update PR status.",
         variant: "destructive",
       });
     }
   };
 
-  const handleQuoteUpdate = async (quoteId: string, updatedData: any) => {
-    // Find the quote to update
-    const quote = quotes.find(q => q.id === quoteId);
-    if (quote) {
-      const newStatus = updatedData.hodStatus || quote.hodStatus;
-      await updateQuoteStatus(quoteId, newStatus);
+  const handleSplitPR = async (prId: string, splitData: any) => {
+    try {
+      const splitItems = splitData.splitPRs || splitData.splitTransactions || [];
+      
+      const originalPR = pendingPRs.find(pr => pr.id === prId);
+      if (originalPR) {
+        const updatedPR = {
+          ...originalPR,
+          ...splitData.originalUpdate,
+          updated_at: new Date().toISOString()
+        };
+
+        await prService.updatePRStatus(prId, undefined, undefined, updatedPR);
+        
+        for (const splitPR of splitItems) {
+          await prService.createPurchaseRequisition(splitPR);
+        }
+
+        await loadPurchaseRequisitions();
+
+        toast({
+          title: "Transaction Split Successfully",
+          description: `Created ${splitItems.length} new PRs.`
+        });
+      }
+    } catch (error) {
+      console.error('Error splitting PR:', error);
+      toast({
+        title: "Split failed",
+        description: "Failed to split the purchase requisition.",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <Layout title="Head of Department Portal">
       <div className="space-y-8">
-        <QuoteTable
-          quotes={quotes}
-          showEmployeeName={true}
-          showActions={true}
-          actionRole="HOD"
-          onFinalize={handleFinalize}
-          onDecline={handleDecline}
-          title="Pending Employee Quotes"
-        />
+        {pendingPRs.length > 0 && (
+          <PurchaseRequisitionTable
+            purchaseRequisitions={pendingPRs}
+            showEmployeeName={true}
+            showActions={true}
+            actionRole="HOD"
+            onFinalize={handleHODFinalize}
+            onSplit={handleSplitPR}
+            title="Pending Employee Purchase Requisitions"
+          />
+        )}
         
-        <QuoteForm onSubmit={handleSubmitQuote} />
+        <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
         
-        <QuoteTable 
-          quotes={myQuotes} 
-          title="My Quote Requests"
+        <PurchaseRequisitionTable 
+          purchaseRequisitions={myPRs} 
+          title="My Purchase Requisitions"
         />
       </div>
     </Layout>

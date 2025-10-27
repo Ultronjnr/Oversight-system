@@ -1,32 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import QuoteForm from '../components/QuoteForm';
-import QuoteTable from '../components/QuoteTable';
+import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
+import PurchaseRequisitionTable from '../components/PurchaseRequisitionTable';
 import { useAuth } from '../contexts/AuthContext';
-import { QuoteService } from '../services/quoteService';
 import { toast } from '@/hooks/use-toast';
+import * as prService from '../services/purchaseRequisitionService';
 
 const EmployeePortal = () => {
   const { user } = useAuth();
-  const [quotes, setQuotes] = useState<any[]>([]);
+  const [purchaseRequisitions, setPurchaseRequisitions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (user?.id) {
-      loadQuotes();
+      loadPurchaseRequisitions();
     }
   }, [user]);
 
-  const loadQuotes = async () => {
+  const loadPurchaseRequisitions = async () => {
     try {
       setIsLoading(true);
-      const employeeQuotes = await QuoteService.getQuotesForEmployee(user!.id);
-      setQuotes(employeeQuotes || []);
+      const userPRs = await prService.getUserPurchaseRequisitions(user!.id);
+      setPurchaseRequisitions(userPRs || []);
     } catch (error) {
-      console.error('Error loading quotes:', error);
+      console.error('Error loading PRs:', error);
       toast({
-        title: "Error Loading Quotes",
-        description: "Failed to load your quote requests.",
+        title: "Error Loading PRs",
+        description: "Failed to load your purchase requisitions.",
         variant: "destructive"
       });
     } finally {
@@ -34,21 +34,33 @@ const EmployeePortal = () => {
     }
   };
 
-  const handleSubmitQuote = async (newQuote: any) => {
+  const handleSubmitPR = async (newPR: any) => {
     try {
-      const createdQuote = await QuoteService.createQuote(newQuote);
-      if (createdQuote) {
-        setQuotes(prev => [...prev, createdQuote]);
+      const routedPR = {
+        ...newPR,
+        requestedBy: user?.id,
+        requestedByName: user?.name,
+        requestedByRole: user?.role,
+        requestedByDepartment: user?.department,
+        hodStatus: 'Pending',
+        financeStatus: 'Pending',
+        status: 'PENDING_HOD_APPROVAL'
+      };
+
+      const createdPR = await prService.createPurchaseRequisition(routedPR);
+      
+      if (createdPR) {
+        setPurchaseRequisitions(prev => [...prev, createdPR]);
         toast({
-          title: "Quote submitted successfully",
-          description: "Your quote request has been submitted for review.",
+          title: "Purchase Requisition Submitted",
+          description: "Your PR has been submitted for HOD approval.",
         });
       }
     } catch (error) {
-      console.error('Error submitting quote:', error);
+      console.error('Error submitting PR:', error);
       toast({
         title: "Submission failed",
-        description: "There was an error submitting your quote request.",
+        description: "There was an error submitting your PR.",
         variant: "destructive",
       });
     }
@@ -57,10 +69,10 @@ const EmployeePortal = () => {
   return (
     <Layout title="Employee Portal">
       <div className="space-y-8">
-        <QuoteForm onSubmit={handleSubmitQuote} />
-        <QuoteTable 
-          quotes={quotes} 
-          title="My Quote Requests"
+        <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
+        <PurchaseRequisitionTable 
+          purchaseRequisitions={purchaseRequisitions} 
+          title="My Purchase Requisitions"
         />
       </div>
     </Layout>

@@ -219,7 +219,7 @@ const SuperAdminPanel = () => {
 
       // Send email in background (non-blocking)
       emitInvitationEvent({
-        email: inviteForm.email,
+        email,
         role: inviteForm.role,
         status: 'pending',
         message: 'Sending email via Resend...'

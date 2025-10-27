@@ -168,7 +168,7 @@ const SuperAdminPanel = () => {
       // Create invitation object optimistically
       const newInvitation: Invitation = {
         id: `temp_${Date.now()}`,
-        email: inviteForm.email,
+        email,
         role: inviteForm.role,
         department: inviteForm.department || null,
         message: inviteForm.message || null,
@@ -181,7 +181,7 @@ const SuperAdminPanel = () => {
       // Update UI immediately (optimistic update)
       setInvites(prev => [newInvitation, ...prev]);
       setInviteForm({ email: '', role: 'Employee', department: '', message: '' });
-      toast({ title: 'Sending invitation...', description: `Invite sent to ${inviteForm.email}` });
+      toast({ title: 'Sending invitation...', description: `Invite sent to ${email}` });
 
       // Insert into Supabase in background
       const invitationData: any = {

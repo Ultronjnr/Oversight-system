@@ -12,9 +12,16 @@ interface DocumentViewerProps {
 
 const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewerProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [downloadError, setDownloadError] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+
+  // Log file details for debugging
+  React.useEffect(() => {
+    if (fileUrl) {
+      console.log('📄 Document loaded:', { fileName, fileUrl: fileUrl.substring(0, 100) + '...', fileType });
+    }
+  }, [fileUrl, fileName, fileType]);
 
   const handleDownload = async () => {
     setIsLoading(true);

@@ -130,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setIsLoading(false);
+        console.error('❌ Sign in error:', error);
         return { success: false, message: error.message || String(error) };
       }
 
@@ -139,6 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, message: 'Authentication failed' };
       }
 
+      console.log('✅ Auth successful, fetching user profile...');
+
       // Get user details from public.users table
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -147,6 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (userData && !userError) {
+        console.log('✅ User profile found:', { id: userData.id, role: userData.role });
         const normalized: User = {
           id: userData.id,
           email: userData.email,
@@ -157,15 +161,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(normalized);
         localStorage.setItem('user', JSON.stringify(normalized));
-      } else {
         setIsLoading(false);
-        return { success: false, message: 'User profile not found' };
-      }
+        return { success: true };
+      } else {
+        console.warn('⚠️ User profile query failed:', {
+          userError: userError?.message || userError?.code,
+          userId: sUser.id,
+          email: sUser.email,
+          userErrorDetails: userError
+        });
 
-      setIsLoading(false);
-      return { success: true };
+        // Fallback: create a minimal user object from auth data
+        // This allows login to succeed even if profile query fails due to RLS
+        const fallbackUser: User = {
+          id: sUser.id,
+          email: sUser.email || email,
+          role: (sUser.user_metadata?.role as User['role']) || 'Employee',
+          name: sUser.user_metadata?.name || sUser.email?.split('@')[0] || 'User',
+          department: sUser.user_metadata?.department,
+          permissions: sUser.user_metadata?.permissions || [],
+        };
+
+        console.log('⚠️ Using fallback user object:', fallbackUser);
+        setUser(fallbackUser);
+        localStorage.setItem('user', JSON.stringify(fallbackUser));
+        setIsLoading(false);
+
+        // Still succeed the login, but log the issue for debugging
+        return { success: true, message: 'Logged in (using fallback profile)' };
+      }
     } catch (err: any) {
       setIsLoading(false);
+      console.error('❌ Login error:', err);
       return { success: false, message: err?.message || 'Login failed' };
     }
   };

@@ -159,11 +159,11 @@ const SuperAdminPanel = () => {
         hostname,
         isBuilderPreview,
         baseDomain,
-        email: inviteForm.email,
+        email,
         token: token.substring(0, 10) + '...'
       });
 
-      const inviteLink = `${baseDomain}/invite?token=${token}&email=${encodeURIComponent(inviteForm.email)}`;
+      const inviteLink = `${baseDomain}/invite?token=${token}&email=${encodeURIComponent(email)}`;
 
       // Create invitation object optimistically
       const newInvitation: Invitation = {

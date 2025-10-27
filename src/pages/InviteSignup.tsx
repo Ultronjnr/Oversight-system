@@ -70,9 +70,9 @@ const InviteSignup = () => {
 
       const timeoutPromise = new Promise<any>((resolve) => {
         setTimeout(() => {
-          console.warn('⏱️ Verification timeout after 15 seconds');
+          console.warn('⏱️ Verification timeout after 5 seconds');
           resolve({ timedOut: true });
-        }, 15000);
+        }, 5000);
       });
 
       const verificationPromise = supabase.functions.invoke('verify-invitation', {

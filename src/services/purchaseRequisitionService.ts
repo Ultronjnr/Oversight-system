@@ -34,6 +34,43 @@ export interface PurchaseRequisition {
 }
 
 /**
+ * Transform Supabase snake_case data to camelCase
+ */
+function transformPRData(data: any): PurchaseRequisition {
+  return {
+    id: data.id,
+    transactionId: data.transaction_id,
+    type: data.type,
+    requestDate: data.request_date,
+    dueDate: data.due_date,
+    paymentDueDate: data.payment_due_date,
+    items: data.items || [],
+    urgencyLevel: data.urgency_level,
+    department: data.department,
+    budgetCode: data.budget_code,
+    projectCode: data.project_code,
+    supplierPreference: data.supplier_preference,
+    deliveryLocation: data.delivery_location,
+    specialInstructions: data.special_instructions,
+    documentName: data.document_name,
+    documentType: data.document_type,
+    documentUrl: data.document_url,
+    status: data.status,
+    hodStatus: data.hod_status,
+    financeStatus: data.finance_status,
+    totalAmount: data.total_amount,
+    currency: data.currency,
+    requestedBy: data.requested_by,
+    requestedByName: data.requested_by_name,
+    requestedByRole: data.requested_by_role,
+    requestedByDepartment: data.requested_by_department,
+    history: data.history || [],
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
+}
+
+/**
  * Create a new Purchase Requisition
  */
 export async function createPurchaseRequisition(pr: PurchaseRequisition) {
@@ -78,7 +115,7 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
     }
 
     console.log('✅ PR created successfully:', data?.[0]?.id);
-    return data?.[0];
+    return data?.[0] ? transformPRData(data[0]) : null;
   } catch (error: any) {
     console.error('❌ Failed to create PR:', error.message);
     // Fall back to localStorage for offline support
@@ -110,7 +147,7 @@ export async function getUserPurchaseRequisitions(userId: string) {
     }
 
     console.log('✅ Fetched PRs:', data?.length || 0);
-    return data || [];
+    return (data || []).map(transformPRData);
   } catch (error: any) {
     console.error('❌ Failed to fetch PRs:', error.message);
     // Fall back to localStorage
@@ -140,7 +177,7 @@ export async function getHODPendingPRs(department: string) {
     }
 
     console.log('✅ Fetched HOD pending PRs:', data?.length || 0);
-    return data || [];
+    return (data || []).map(transformPRData);
   } catch (error: any) {
     console.error('❌ Failed to fetch HOD PRs:', error.message);
     return [];
@@ -166,7 +203,7 @@ export async function getFinancePendingPRs() {
     }
 
     console.log('✅ Fetched Finance pending PRs:', data?.length || 0);
-    return data || [];
+    return (data || []).map(transformPRData);
   } catch (error: any) {
     console.error('❌ Failed to fetch Finance PRs:', error.message);
     return [];
@@ -207,7 +244,7 @@ export async function updatePRStatus(
     }
 
     console.log('✅ PR updated successfully');
-    return data?.[0];
+    return data?.[0] ? transformPRData(data[0]) : null;
   } catch (error: any) {
     console.error('❌ Failed to update PR:', error.message);
     // Fall back to localStorage
@@ -246,7 +283,7 @@ export async function getAllPurchaseRequisitions() {
     }
 
     console.log('✅ Fetched all PRs:', data?.length || 0);
-    return data || [];
+    return (data || []).map(transformPRData);
   } catch (error: any) {
     console.error('❌ Failed to fetch all PRs:', error.message);
     const savedPRs = localStorage.getItem('purchaseRequisitions');

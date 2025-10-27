@@ -147,7 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('*')
         .eq('id', sUser.id)
-        .single();
+        .maybeSingle();
 
       if (userData && !userError) {
         console.log('✅ User profile found:', { id: userData.id, role: userData.role });

@@ -47,22 +47,28 @@ const EmployeePortal = () => {
         status: 'PENDING_HOD_APPROVAL'
       };
 
+      console.log('📝 Submitting PR from EmployeePortal:', routedPR.transactionId);
       const createdPR = await prService.createPurchaseRequisition(routedPR);
-      
+
       if (createdPR) {
+        console.log('✅ PR created successfully in EmployeePortal:', createdPR.id);
         setPurchaseRequisitions(prev => [...prev, createdPR]);
         toast({
           title: "Purchase Requisition Submitted",
-          description: "Your PR has been submitted for HOD approval.",
+          description: `Your PR has been submitted for HOD approval. Reference: ${createdPR.transactionId}`,
         });
+        return createdPR;
+      } else {
+        throw new Error('Failed to create PR - no data returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting PR:', error);
       toast({
         title: "Submission failed",
-        description: "There was an error submitting your PR.",
+        description: error?.message || "There was an error submitting your PR.",
         variant: "destructive",
       });
+      throw error;
     }
   };
 

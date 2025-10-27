@@ -53,7 +53,7 @@ serve(async (req) => {
       .from('invitations')
       .select('id, email, role, department, status, expires_at, token, created_at')
       .eq('token', token)
-      .eq('email', email)
+      .ilike('email', email)
       .eq('status', 'pending')
       .gt('expires_at', new Date().toISOString())
       .single()

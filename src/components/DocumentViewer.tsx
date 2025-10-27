@@ -242,11 +242,12 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
           <div className="flex justify-between items-center mt-6 pt-4 border-t">
             <div className="flex-1">
               {downloadError && (
-                <div className="flex items-center text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                <div className="flex items-start text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">Download failed</p>
-                    <p className="text-xs mt-1">Please check your internet connection and try again</p>
+                    <p className="text-xs mt-1 text-red-700">{downloadError}</p>
+                    <p className="text-xs mt-2 text-gray-600">Try clicking the Download button again</p>
                   </div>
                 </div>
               )}

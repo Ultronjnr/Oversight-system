@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Upload, FileText, X, Hash, Calculator, Clock, Building } from 'lucide-react';
 import { generateTransactionId } from '../lib/transactionUtils';
+import { supabase } from '../lib/supabaseClient';
 
 interface PurchaseRequisitionFormProps {
   onSubmit: (pr: any) => void;

@@ -284,7 +284,7 @@ const SuperAdminPanel = () => {
     } catch (e: any) {
       const localInvite: Invitation = {
         id: `local_${Date.now()}`,
-        email: inviteForm.email,
+        email,
         role: inviteForm.role,
         department: inviteForm.department,
         message: inviteForm.message,

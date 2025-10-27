@@ -18,32 +18,27 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
   const handleDownload = async () => {
     setIsLoading(true);
     setDownloadError(false);
-    
+
     try {
       if (fileUrl) {
-        // For blob URLs (uploaded files), download directly
+        // For Supabase storage URLs or blob URLs, download via fetch
+        const response = await fetch(fileUrl, { mode: 'cors' });
+
+        if (!response.ok) {
+          throw new Error(`Download failed with status ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = fileUrl;
+        a.href = url;
         a.download = fileName;
         document.body.appendChild(a);
         a.click();
+        window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        // For server files, make API call
-        const response = await fetch(`/api/quotes/${quoteId}/document/download`);
-        if (response.ok) {
-          const blob = await response.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
-        } else {
-          throw new Error('Download failed');
-        }
+        throw new Error('No file URL available');
       }
     } catch (error) {
       console.error('Download failed:', error);

@@ -121,6 +121,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           description: "Please fill in all required due dates.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -130,6 +131,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           description: "Please fill in all item names, descriptions and prices.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -199,24 +201,25 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         documentUrl: documentUrl,
       };
 
-      onSubmit(purchaseRequisition);
-      
-      // Reset form
+      // Await the async onSubmit call
+      await onSubmit(purchaseRequisition);
+
+      // Only reset form after successful submission
       setFormData({
         requestDate: new Date().toISOString().split('T')[0],
         dueDate: '',
         paymentDueDate: '',
         items: [{
-      id: '1',
-      itemName: '',
-      description: '',
-      quantity: 1,
-      unitPrice: '',
-      totalPrice: '',
-      vatClassification: 'VAT_APPLICABLE',
-      technicalSpecs: '',
-      businessJustification: ''
-    }],
+          id: '1',
+          itemName: '',
+          description: '',
+          quantity: 1,
+          unitPrice: '',
+          totalPrice: '',
+          vatClassification: 'VAT_APPLICABLE',
+          technicalSpecs: '',
+          businessJustification: ''
+        }],
         urgencyLevel: 'NORMAL',
         department: user?.department || '',
         budgetCode: '',
@@ -225,11 +228,6 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         deliveryLocation: '',
         specialInstructions: '',
         sourceDocument: null,
-      });
-      
-      toast({
-        title: "Purchase Requisition submitted successfully",
-        description: `Your PR has been submitted for approval. Reference: ${transactionId}`,
       });
     } catch (error) {
       console.error('Submit error:', error);

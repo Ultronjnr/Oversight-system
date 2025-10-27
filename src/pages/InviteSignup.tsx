@@ -24,10 +24,11 @@ const InviteSignup = () => {
   const token = searchParams.get('token');
   const rawEmail = searchParams.get('email');
   const email = rawEmail
-    ? rawEmail
+    ? (rawEmail
         .trim()
-        .match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[0]
-        ?.toLowerCase() || null
+        .match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)?.[0] || rawEmail)
+        .toLowerCase()
+        .trim()
     : null;
 
   useEffect(() => {

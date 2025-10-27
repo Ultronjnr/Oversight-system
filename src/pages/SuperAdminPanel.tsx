@@ -268,13 +268,13 @@ const SuperAdminPanel = () => {
         .catch((error) => {
           console.error('❌ Email send error:', error);
           emitInvitationEvent({
-            email: inviteForm.email,
+            email,
             role: inviteForm.role,
             status: 'failed',
             message: 'Failed to send email',
             error: error.message
           });
-          console.log('Invitation email fallback:', { to: inviteForm.email, inviteLink });
+          console.log('Invitation email fallback:', { to: email, inviteLink });
           toast({
             title: 'Email Send Issue',
             description: error.message || 'Invitation created but email sending failed.',

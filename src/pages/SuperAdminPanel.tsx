@@ -124,7 +124,8 @@ const SuperAdminPanel = () => {
   const generateToken = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
   const handleSendInvitation = async () => {
-    if (!inviteForm.email || !inviteForm.role) {
+    const email = inviteForm.email.toLowerCase().trim();
+    if (!email || !inviteForm.role) {
       toast({ title: 'Missing fields', description: 'Email and invitation type are required', variant: 'destructive' });
       return;
     }

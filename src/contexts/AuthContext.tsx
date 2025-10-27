@@ -47,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('users')
             .select('*')
             .eq('id', sUser.id)
-            .single();
+            .maybeSingle();
 
           if (mounted && userData && !userError) {
             const normalized: User = {

@@ -75,27 +75,37 @@ const HODPortal = () => {
 
   const handleHODFinalize = async (prId: string, finalizationData: any) => {
     try {
-      const approveStatus = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
-      
-      await prService.updatePRStatus(prId, approveStatus, undefined, {
-        history: [{
-          status: `HOD ${approveStatus}`,
-          date: new Date().toISOString(),
-          by: user?.email,
-          action: approveStatus === 'Approved' ? 'HOD_FINALIZE' : 'HOD_DECLINE',
-          comments: finalizationData.comments
-        }]
-      });
+      if (finalizationData.decision === 'approve') {
+        await prService.approveRequisition(
+          prId,
+          'HOD',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments
+        );
 
-      await loadPurchaseRequisitions();
-      
-      toast({
-        title: approveStatus === 'Approved' ? "PR Finalized" : "PR Declined",
-        description: approveStatus === 'Approved'
-          ? "The purchase requisition has been finalized and sent to Finance."
-          : "The purchase requisition has been declined.",
-        variant: approveStatus === 'Approved' ? "default" : "destructive"
-      });
+        toast({
+          title: "PR Approved",
+          description: "The purchase requisition has been approved and sent to Finance for review.",
+        });
+      } else {
+        await prService.rejectRequisition(
+          prId,
+          'HOD',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments || 'No reason provided'
+        );
+
+        toast({
+          title: "PR Declined",
+          description: "The purchase requisition has been declined.",
+          variant: "destructive"
+        });
+      }
+
+      // Reload data immediately to show updated status
+      setTimeout(() => {
+        loadPurchaseRequisitions();
+      }, 500);
     } catch (error) {
       console.error('Error finalizing PR:', error);
       toast({

@@ -159,7 +159,9 @@ function getDiagnosticMessage(statusCode: number, body: string): string {
 }
 
 async function processInvitationEmail(requestBody: any): Promise<{ success: boolean; provider: string; messageId?: string; error?: string; diagnostics?: any }> {
-  const { email, inviteLink, role, inviterEmail, department } = requestBody
+  const { email: rawEmail, inviteLink, role, inviterEmail, department } = requestBody
+  // Normalize email to lowercase for consistency
+  const email = rawEmail ? rawEmail.toLowerCase().trim() : null
 
   console.log('📋 Processing invitation email:', {
     email: email ? `${email.substring(0, 5)}...` : 'missing',

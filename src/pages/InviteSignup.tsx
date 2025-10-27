@@ -294,7 +294,7 @@ const InviteSignup = () => {
             profile_completed: true
           }, { onConflict: 'id' })
           .select('id')
-          .single()
+          .maybeSingle()
           .then(() => console.log('✅ Profile saved with completion status'))
           .catch((err) => console.warn('⚠️ Profile save failed (non-critical):', err.message));
       }

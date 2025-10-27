@@ -258,7 +258,9 @@ const InviteSignup = () => {
             name: formData.name,
             role: invitation.role,
             department: invitation.department,
-            permissions: invitation.permissions || [],
+            permissions: Array.isArray(invitation.permissions)
+              ? invitation.permissions.join(',')
+              : (invitation.permissions || ''),
             invitation_token: token
           }
         }

@@ -251,7 +251,7 @@ const InviteSignup = () => {
       console.log('🔐 Creating user account in Supabase Auth...');
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: invitation.email,
+        email: invitation.email.toLowerCase().trim(),
         password: formData.password,
         options: {
           data: {

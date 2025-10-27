@@ -232,7 +232,7 @@ const SuperAdminPanel = () => {
 
       supabase.functions.invoke('send-invitation-email', {
         body: {
-          email: inviteForm.email,
+          email,
           role: inviteForm.role,
           department: inviteForm.department,
           inviterEmail: user?.email || 'admin@oversight.local',

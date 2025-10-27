@@ -173,10 +173,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Fallback: create a minimal user object from auth data
         // This allows login to succeed even if profile query fails due to RLS
+        // First, try to get role from auth metadata, otherwise use 'Employee'
+        let fallbackRole: User['role'] = 'Employee';
+        if (sUser.user_metadata?.role) {
+          const metaRole = sUser.user_metadata.role as string;
+          if (['SuperUser', 'Admin', 'Finance', 'HOD', 'Employee'].includes(metaRole)) {
+            fallbackRole = metaRole as User['role'];
+          }
+        }
+
         const fallbackUser: User = {
           id: sUser.id,
           email: sUser.email || email,
-          role: (sUser.user_metadata?.role as User['role']) || 'Employee',
+          role: fallbackRole,
           name: sUser.user_metadata?.name || sUser.email?.split('@')[0] || 'User',
           department: sUser.user_metadata?.department,
           permissions: sUser.user_metadata?.permissions || [],

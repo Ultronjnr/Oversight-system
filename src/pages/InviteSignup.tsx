@@ -314,6 +314,12 @@ const InviteSignup = () => {
 
     } catch (error: any) {
       console.error('❌ Signup error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        statusText: error.statusText
+      });
       setIsLoading(false);
       toast({
         title: 'Signup Failed',

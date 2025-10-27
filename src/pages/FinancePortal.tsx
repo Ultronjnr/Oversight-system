@@ -73,27 +73,37 @@ const FinancePortal = () => {
 
   const handleFinanceApprove = async (prId: string, finalizationData: any) => {
     try {
-      const approveStatus = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
-      
-      await prService.updatePRStatus(prId, undefined, approveStatus, {
-        history: [{
-          status: `Finance ${approveStatus}`,
-          date: new Date().toISOString(),
-          by: user?.email,
-          action: approveStatus === 'Approved' ? 'FINANCE_APPROVE' : 'FINANCE_DECLINE',
-          comments: finalizationData.comments
-        }]
-      });
+      if (finalizationData.decision === 'approve') {
+        await prService.approveRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments
+        );
 
-      await loadPurchaseRequisitions();
-      
-      toast({
-        title: approveStatus === 'Approved' ? "PR Approved" : "PR Declined",
-        description: approveStatus === 'Approved'
-          ? "The purchase requisition has been given final approval."
-          : "The purchase requisition has been declined by Finance.",
-        variant: approveStatus === 'Approved' ? "default" : "destructive"
-      });
+        toast({
+          title: "PR Approved",
+          description: "The purchase requisition has been given final approval and is ready for purchase order.",
+        });
+      } else {
+        await prService.rejectRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments || 'No reason provided'
+        );
+
+        toast({
+          title: "PR Declined",
+          description: "The purchase requisition has been declined by Finance.",
+          variant: "destructive"
+        });
+      }
+
+      // Reload data immediately to show updated status
+      setTimeout(() => {
+        loadPurchaseRequisitions();
+      }, 500);
     } catch (error) {
       console.error('Error approving PR:', error);
       toast({

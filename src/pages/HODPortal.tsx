@@ -33,9 +33,11 @@ const HODPortal = () => {
   const loadPurchaseRequisitions = async () => {
     try {
       setIsLoading(true);
-      
+      console.log('📋 Loading HOD portal PRs for department:', user?.department);
+
       if (user?.department) {
         const hodPendingPRs = await prService.getHODPendingPRs(user.department);
+        console.log('✅ Loaded HOD pending PRs:', hodPendingPRs?.length || 0);
         setPendingPRs(hodPendingPRs || []);
       }
 
@@ -51,6 +53,16 @@ const HODPortal = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadPurchaseRequisitions();
+    setIsRefreshing(false);
+    toast({
+      title: "Refreshed",
+      description: "HOD portal data has been updated.",
+    });
   };
 
   const handleSubmitPR = async (newPR: any) => {

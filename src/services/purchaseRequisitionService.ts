@@ -188,7 +188,7 @@ export async function getHODPendingPRs(department: string) {
 }
 
 /**
- * Get all Finance pending PRs
+ * Get all Finance pending PRs - shows all PRs awaiting Finance review/approval
  */
 export async function getFinancePendingPRs() {
   try {
@@ -197,7 +197,8 @@ export async function getFinancePendingPRs() {
     const { data, error } = await supabase
       .from('purchase_requisitions')
       .select('*')
-      .eq('finance_status', 'Pending')
+      .neq('status', 'Rejected')
+      .neq('finance_status', 'Approved')
       .order('created_at', { ascending: false });
 
     if (error) {

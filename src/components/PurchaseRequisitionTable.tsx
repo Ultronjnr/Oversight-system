@@ -233,7 +233,7 @@ const PurchaseRequisitionTable = ({
                     const docInfo = getDocumentInfo(pr);
                     
                     return (
-                      <tr key={`${pr.id}-${pr.transactionId || index}`} className="border-b border-border/50 hover:bg-muted/50 transition-all duration-300 hover-lift">
+                      <tr key={`${pr.id}-${pr.transactionId || index}`} className={`border-b border-border/50 transition-all duration-300 hover-lift ${pr.isSplitItem ? 'bg-purple-50/50 hover:bg-purple-100/50' : 'hover:bg-muted/50'}`}>
                         <td className="p-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 font-mono text-sm">

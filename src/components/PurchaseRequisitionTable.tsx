@@ -237,9 +237,13 @@ const PurchaseRequisitionTable = ({
                         <td className="p-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 font-mono text-sm">
-                              <Hash className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-blue-600 font-medium">
-                                {pr.transactionId || 'N/A'}
+                              {pr.isSplitItem ? (
+                                <Badge className="bg-purple-500">Split</Badge>
+                              ) : (
+                                <Hash className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              <span className={`font-medium ${pr.isSplitItem ? 'text-purple-600' : 'text-blue-600'}`}>
+                                {pr.transactionId || pr.description || 'N/A'}
                               </span>
                             </div>
                             {pr.isSplit && (
@@ -247,8 +251,13 @@ const PurchaseRequisitionTable = ({
                                 Split from {pr.originalTransactionId}
                               </Badge>
                             )}
+                            {pr.isSplitItem && pr.splitParentId && (
+                              <Badge variant="outline" className="text-xs bg-purple-50">
+                                Part of split
+                              </Badge>
+                            )}
                             <div className="text-xs text-muted-foreground">
-                              {new Date(pr.requestDate).toLocaleDateString()}
+                              {new Date(pr.requestDate || new Date()).toLocaleDateString()}
                             </div>
                           </div>
                         </td>

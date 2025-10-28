@@ -14,10 +14,19 @@ const HODPortal = () => {
   const [pendingPRs, setPendingPRs] = useState<any[]>([]);
   const [myPRs, setMyPRs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
+
+      // Auto-refresh HOD portal every 30 seconds to show new submissions from employees
+      const refreshInterval = setInterval(() => {
+        console.log('🔄 Auto-refreshing HOD portal...');
+        loadPurchaseRequisitions();
+      }, 30000);
+
+      return () => clearInterval(refreshInterval);
     }
   }, [user]);
 

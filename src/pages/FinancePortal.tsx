@@ -33,8 +33,10 @@ const FinancePortal = () => {
   const loadPurchaseRequisitions = async () => {
     try {
       setIsLoading(true);
-      
+      console.log('📋 Loading Finance portal PRs...');
+
       const pendingPRs = await prService.getFinancePendingPRs();
+      console.log('✅ Loaded Finance pending PRs:', pendingPRs?.length || 0);
       setFinancePendingPRs(pendingPRs || []);
 
       const myPurchaseRequisitions = await prService.getUserPurchaseRequisitions(user!.id);
@@ -49,6 +51,16 @@ const FinancePortal = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadPurchaseRequisitions();
+    setIsRefreshing(false);
+    toast({
+      title: "Refreshed",
+      description: "Finance portal data has been updated.",
+    });
   };
 
   const handleSubmitPR = async (newPR: any) => {

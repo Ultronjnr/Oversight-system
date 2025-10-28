@@ -25,7 +25,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
 
   const handleDownload = async () => {
     setIsLoading(true);
-    setDownloadError(false);
+    setDownloadError(null);
 
     try {
       if (!fileUrl) {

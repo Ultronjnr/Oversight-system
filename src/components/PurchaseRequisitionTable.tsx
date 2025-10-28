@@ -73,21 +73,22 @@ interface PurchaseRequisitionTableProps {
   title: string;
 }
 
-const PurchaseRequisitionTable = ({ 
-  purchaseRequisitions, 
-  showEmployeeName = false, 
+const PurchaseRequisitionTable = ({
+  purchaseRequisitions,
+  showEmployeeName = false,
   showActions = false,
   actionRole,
   onApprove,
   onDecline,
   onFinalize,
   onSplit,
-  title 
+  title
 }: PurchaseRequisitionTableProps) => {
   const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [isFinalizationOpen, setIsFinalizationOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<'items' | 'history'>('items');
   
   const getStatusBadge = (hodStatus: string, financeStatus: string, urgencyLevel: string) => {
     if (financeStatus === 'Approved') {

@@ -178,6 +178,20 @@ const HODPortal = () => {
   return (
     <Layout title="Head of Department Portal">
       <div className="space-y-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold">Department Approval Queue</h2>
+          <Button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
+
         {pendingPRs.length > 0 && (
           <PurchaseRequisitionTable
             purchaseRequisitions={pendingPRs}

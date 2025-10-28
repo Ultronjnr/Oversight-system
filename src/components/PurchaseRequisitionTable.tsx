@@ -229,7 +229,7 @@ const PurchaseRequisitionTable = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {purchaseRequisitions.map((pr, index) => {
+                  {getDisplayPRs().map((pr, index) => {
                     const docInfo = getDocumentInfo(pr);
                     
                     return (

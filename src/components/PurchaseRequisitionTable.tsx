@@ -387,48 +387,85 @@ const PurchaseRequisitionTable = ({
           </DialogHeader>
           {selectedPR && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="font-medium">Transaction ID</Label>
-                  <p className="font-mono">{selectedPR.transactionId}</p>
-                </div>
-                <div>
-                  <Label className="font-medium">Total Amount</Label>
-                  <p className="text-lg font-bold text-green-600">
-                    {formatCurrency(selectedPR.totalAmount, selectedPR.currency)}
-                  </p>
-                </div>
+              {/* Tabs */}
+              <div className="flex gap-2 border-b">
+                <Button
+                  variant={detailsTab === 'items' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDetailsTab('items')}
+                  className="gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Items & Details
+                </Button>
+                <Button
+                  variant={detailsTab === 'history' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDetailsTab('history')}
+                  className="gap-2"
+                >
+                  <HistoryIcon className="h-4 w-4" />
+                  History
+                </Button>
               </div>
-              
-              <div>
-                <Label className="font-medium">Items</Label>
-                <div className="space-y-2 mt-2">
-                  {selectedPR.items.map((item, index) => (
-                    <Card key={item.id} className="p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="font-medium">{item.description}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Qty: {item.quantity} × {formatCurrency(parseFloat(item.unitPrice), selectedPR.currency)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">{formatCurrency(parseFloat(item.totalPrice), selectedPR.currency)}</p>
-                          <Badge variant="outline" className="mt-1">
-                            {item.vatClassification === 'VAT_APPLICABLE' ? 'VAT Incl.' : 'No VAT'}
-                          </Badge>
-                        </div>
-                      </div>
-                      {item.technicalSpecs && (
-                        <div className="mt-2">
-                          <Label className="text-xs">Technical Specs</Label>
-                          <p className="text-sm">{item.technicalSpecs}</p>
-                        </div>
-                      )}
-                    </Card>
-                  ))}
+
+              {/* Items Tab */}
+              {detailsTab === 'items' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="font-medium">Transaction ID</Label>
+                      <p className="font-mono">{selectedPR.transactionId}</p>
+                    </div>
+                    <div>
+                      <Label className="font-medium">Total Amount</Label>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(selectedPR.totalAmount, selectedPR.currency)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="font-medium">Items</Label>
+                    <div className="space-y-2 mt-2">
+                      {selectedPR.items.map((item, index) => (
+                        <Card key={item.id} className="p-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="font-medium">{item.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Qty: {item.quantity} × {formatCurrency(parseFloat(item.unitPrice), selectedPR.currency)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{formatCurrency(parseFloat(item.totalPrice), selectedPR.currency)}</p>
+                              <Badge variant="outline" className="mt-1">
+                                {item.vatClassification === 'VAT_APPLICABLE' ? 'VAT Incl.' : 'No VAT'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {item.technicalSpecs && (
+                            <div className="mt-2">
+                              <Label className="text-xs">Technical Specs</Label>
+                              <p className="text-sm">{item.technicalSpecs}</p>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* History Tab */}
+              {detailsTab === 'history' && (
+                <PRHistory
+                  history={selectedPR.history || []}
+                  transactionId={selectedPR.transactionId}
+                  status={selectedPR.status}
+                  createdAt={selectedPR.createdAt}
+                />
+              )}
             </div>
           )}
         </DialogContent>

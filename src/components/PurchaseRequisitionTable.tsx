@@ -325,16 +325,31 @@ const PurchaseRequisitionTable = ({
                           </div>
                         </td>
                         <td className="p-3">
-                          {hasDocument(pr) ? (
-                            <DocumentViewer
-                              fileName={docInfo.fileName}
-                              fileUrl={docInfo.fileUrl}
-                              fileType={docInfo.fileType}
-                              quoteId={pr.id}
-                            />
-                          ) : (
-                            <span className="text-muted-foreground text-sm">No document</span>
-                          )}
+                          <div className="flex gap-2 items-center">
+                            {hasDocument(pr) ? (
+                              <DocumentViewer
+                                fileName={docInfo.fileName}
+                                fileUrl={docInfo.fileUrl}
+                                fileType={docInfo.fileType}
+                                quoteId={pr.id}
+                              />
+                            ) : (
+                              <span className="text-muted-foreground text-sm">No document</span>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                              onClick={() => {
+                                setSelectedPR(pr);
+                                setDetailsTab('history');
+                                setIsDetailsOpen(true);
+                              }}
+                              title="View PR History"
+                            >
+                              <HistoryIcon className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                         <td className="p-3">{getStatusBadge(pr.hodStatus, pr.financeStatus, pr.urgencyLevel)}</td>
                         {showActions && (

@@ -108,8 +108,8 @@ const HODPortal = () => {
         );
 
         toast({
-          title: "PR Approved",
-          description: "The purchase requisition has been approved and sent to Finance for review.",
+          title: "✅ PR Approved",
+          description: `PR ${finalizationData.transactionId} has been approved by HOD. Sent to Finance for review. ${finalizationData.comments}`,
         });
       } else {
         await prService.rejectRequisition(
@@ -120,15 +120,16 @@ const HODPortal = () => {
         );
 
         toast({
-          title: "PR Declined",
-          description: "The purchase requisition has been declined.",
+          title: "❌ PR Declined",
+          description: `PR ${finalizationData.transactionId} has been declined by HOD. ${finalizationData.comments}`,
           variant: "destructive"
         });
       }
 
-      // Reload data immediately to show updated status
+      // Reload data immediately to show updated status in real-time
       setTimeout(() => {
         loadPurchaseRequisitions();
+        console.log('✅ HOD portal refreshed after action');
       }, 500);
     } catch (error) {
       console.error('Error finalizing PR:', error);

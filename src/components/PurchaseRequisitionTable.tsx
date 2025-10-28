@@ -280,11 +280,21 @@ const PurchaseRequisitionTable = ({
                         </td>
                         <td className="p-3">
                           <div className="font-medium text-foreground">
-                            {formatCurrency(pr.totalAmount, pr.currency)}
+                            {formatCurrency(pr.totalAmount || pr.amount || 0, pr.currency)}
                           </div>
+                          {pr.isSplitItem && (
+                            <div className="text-xs text-purple-600 font-semibold">
+                              Split Item
+                            </div>
+                          )}
                           {pr.budgetCode && (
                             <div className="text-xs text-muted-foreground">
                               Budget: {pr.budgetCode}
+                            </div>
+                          )}
+                          {pr.category && (
+                            <div className="text-xs text-muted-foreground">
+                              Category: {pr.category}
                             </div>
                           )}
                         </td>

@@ -68,6 +68,7 @@ interface PurchaseRequisitionTableProps {
   onDecline?: (prId: string) => void;
   onFinalize?: (prId: string, data: any) => void;
   onSplit?: (prId: string, splitData: any) => void;
+  onRefresh?: () => void;
   title: string;
 }
 

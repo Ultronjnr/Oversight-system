@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { FileText, Check, X, Hash, Split, Eye, Calculator, Calendar, Building } from 'lucide-react';
+import { FileText, Check, X, Hash, Split, Eye, Calculator, Calendar, Building, History as HistoryIcon } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
 import SplitPRModal from './SplitPRModal';
 import FinalizationModal from './FinalizationModal';
+import PRHistory from './PRHistory';
 
 interface PurchaseRequisition {
   id: string;

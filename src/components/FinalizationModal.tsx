@@ -298,6 +298,13 @@ const FinalizationModal = ({ isOpen, onClose, purchaseRequisition, actionRole, o
 
       onFinalize(finalizationData);
 
+      // Show success notification
+      toast({
+        title: decision === 'approve' ? '✅ PR Approved' : '❌ PR Declined',
+        description: `PR ${purchaseRequisition.transactionId} has been ${decision === 'approve' ? 'approved' : 'declined'} by ${actionRole}. ${comments}`,
+        variant: decision === 'approve' ? 'default' : 'destructive'
+      });
+
       toast({
         title: `PR ${decision === 'approve' ? 'Approved' : 'Declined'}`,
         description: `Purchase requisition has been ${decision === 'approve' ? 'approved' : 'declined'} successfully.`

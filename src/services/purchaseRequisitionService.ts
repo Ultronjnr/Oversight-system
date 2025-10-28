@@ -78,6 +78,17 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
   try {
     console.log('📝 Creating PR in Supabase:', { transactionId: pr.transactionId, timestamp: new Date().toISOString() });
 
+    const timestamp = new Date().toISOString();
+    const initialHistory = [
+      {
+        action: 'Submitted',
+        by: pr.requestedByName || 'Unknown User',
+        role: pr.requestedByRole || 'Employee',
+        timestamp: timestamp,
+        comments: 'Purchase requisition submitted for approval'
+      }
+    ];
+
     const { data, error } = await supabase
       .from('purchase_requisitions')
       .insert({
@@ -106,7 +117,7 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
         requested_by_name: pr.requestedByName || null,
         requested_by_role: pr.requestedByRole || null,
         requested_by_department: pr.requestedByDepartment || null,
-        history: pr.history
+        history: pr.history && pr.history.length > 0 ? pr.history : initialHistory
       })
       .select();
 

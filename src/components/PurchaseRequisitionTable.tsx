@@ -339,34 +339,49 @@ const PurchaseRequisitionTable = ({
                         <td className="p-3">{getStatusBadge(pr.hodStatus, pr.financeStatus, pr.urgencyLevel)}</td>
                         {showActions && (
                           <td className="p-3">
-                            {canShowActions(pr) ? (
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  className={`${actionRole === 'HOD' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white hover-scale btn-shimmer`}
-                                  onClick={() => handleFinalizationClick(pr)}
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Finalize
-                                </Button>
-                                {/* Only show Split for HOD and Finance, not Employee */}
-                                {(actionRole === 'HOD' || actionRole === 'Finance') && (
+                            <div className="flex space-x-2 items-center">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                onClick={() => {
+                                  setSelectedPR(pr);
+                                  setDetailsTab('history');
+                                  setIsDetailsOpen(true);
+                                }}
+                                title="View PR History"
+                              >
+                                <HistoryIcon className="h-4 w-4" />
+                              </Button>
+                              {canShowActions(pr) ? (
+                                <div className="flex space-x-2">
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="text-purple-600 border-purple-600 hover:bg-purple-50 hover-scale btn-shimmer"
-                                    onClick={() => handleSplitClick(pr)}
+                                    className={`${actionRole === 'HOD' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white hover-scale btn-shimmer`}
+                                    onClick={() => handleFinalizationClick(pr)}
                                   >
-                                    <Split className="h-3 w-3 mr-1" />
-                                    Split
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Finalize
                                   </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                {pr.hodStatus === 'Declined' || pr.financeStatus !== 'Pending' ? 'Completed' : 'Processed'}
-                              </span>
-                            )}
+                                  {/* Only show Split for HOD and Finance, not Employee */}
+                                  {(actionRole === 'HOD' || actionRole === 'Finance') && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-purple-600 border-purple-600 hover:bg-purple-50 hover-scale btn-shimmer"
+                                      onClick={() => handleSplitClick(pr)}
+                                    >
+                                      <Split className="h-3 w-3 mr-1" />
+                                      Split
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">
+                                  {pr.hodStatus === 'Declined' || pr.financeStatus !== 'Pending' ? 'Completed' : 'Processed'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>

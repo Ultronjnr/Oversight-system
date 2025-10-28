@@ -195,12 +195,13 @@ export async function getFinancePendingPRs() {
   try {
     console.log('🔍 Fetching pending PRs for Finance');
 
-    // Finance should see all PRs that haven't been approved by Finance yet
+    // Finance should see all PRs with finance_status = 'Pending'
+    // This includes both PRs pending HOD AND PRs approved by HOD but pending Finance
     const { data, error } = await supabase
       .from('purchase_requisitions')
       .select('*')
       .eq('finance_status', 'Pending')
-      .in('status', ['PENDING_HOD_APPROVAL', 'PENDING_FINANCE_APPROVAL', 'APPROVED'])
+      .neq('status', 'Rejected')
       .order('hod_status', { ascending: false })
       .order('created_at', { ascending: false });
 

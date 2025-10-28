@@ -151,6 +151,29 @@ const PurchaseRequisitionTable = ({
     setIsSplitOpen(true);
   };
 
+  const getDisplayPRs = () => {
+    // Flatten split items to show as separate rows
+    const displayPRs: (PurchaseRequisition & { isSplitItem?: boolean; splitParentId?: string })[] = [];
+
+    for (const pr of purchaseRequisitions) {
+      displayPRs.push(pr);
+
+      // If PR has split items, add them as separate rows
+      if (pr.splitItems && pr.splitItems.length > 0) {
+        for (const splitItem of pr.splitItems) {
+          displayPRs.push({
+            ...splitItem,
+            id: splitItem.id || `${pr.id}_split_${Math.random()}`,
+            isSplitItem: true,
+            splitParentId: pr.id,
+          } as any);
+        }
+      }
+    }
+
+    return displayPRs;
+  };
+
   const handleFinalizationClick = (pr: PurchaseRequisition) => {
     setSelectedPR(pr);
     setIsFinalizationOpen(true);

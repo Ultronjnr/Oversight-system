@@ -14,10 +14,19 @@ const FinancePortal = () => {
   const [financePendingPRs, setFinancePendingPRs] = useState<any[]>([]);
   const [myPRs, setMyPRs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
+
+      // Auto-refresh Finance portal every 30 seconds to show new submissions
+      const refreshInterval = setInterval(() => {
+        console.log('🔄 Auto-refreshing Finance portal...');
+        loadPurchaseRequisitions();
+      }, 30000);
+
+      return () => clearInterval(refreshInterval);
     }
   }, [user]);
 

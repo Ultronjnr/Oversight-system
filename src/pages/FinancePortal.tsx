@@ -106,8 +106,8 @@ const FinancePortal = () => {
         );
 
         toast({
-          title: "PR Approved",
-          description: "The purchase requisition has been given final approval and is ready for purchase order.",
+          title: "✅ PR Approved",
+          description: `PR ${finalizationData.transactionId} has been approved for payment. ${finalizationData.comments}`,
         });
       } else {
         await prService.rejectRequisition(
@@ -118,15 +118,16 @@ const FinancePortal = () => {
         );
 
         toast({
-          title: "PR Declined",
-          description: "The purchase requisition has been declined by Finance.",
+          title: "❌ PR Declined",
+          description: `PR ${finalizationData.transactionId} has been declined by Finance. ${finalizationData.comments}`,
           variant: "destructive"
         });
       }
 
-      // Reload data immediately to show updated status
+      // Reload data immediately to show updated status in real-time
       setTimeout(() => {
         loadPurchaseRequisitions();
+        console.log('✅ Finance portal refreshed after action');
       }, 500);
     } catch (error) {
       console.error('Error approving PR:', error);

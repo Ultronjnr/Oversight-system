@@ -343,12 +343,8 @@ export async function approveRequisition(
 
     if (approverRole === 'HOD') {
       updateData.hod_status = 'Approved';
-      updateData.hod_approved_at = timestamp;
-      updateData.hod_approved_by = approverName;
     } else if (approverRole === 'Finance') {
       updateData.finance_status = 'Approved';
-      updateData.finance_approved_at = timestamp;
-      updateData.finance_approved_by = approverName;
     }
 
     // Add to history

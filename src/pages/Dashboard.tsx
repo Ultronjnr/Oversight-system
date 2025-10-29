@@ -353,6 +353,7 @@ const Dashboard = () => {
                   actionRole="HOD"
                   onFinalize={handleHODFinalize}
                   onSplit={handleSplitPR}
+                  onDialogOpenChange={setHasOpenDialog}
                   title=""
                 />
               </DialogContent>

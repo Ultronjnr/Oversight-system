@@ -537,6 +537,7 @@ const PurchaseRequisitionTable = ({
           onSplit={(splitData) => {
             onSplit?.(selectedPR.id, splitData);
             setIsFinalizationOpen(false);
+            setIsDetailsOpen(false);
           }}
         />
       )}

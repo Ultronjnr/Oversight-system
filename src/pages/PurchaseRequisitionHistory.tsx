@@ -184,6 +184,10 @@ const PurchaseRequisitionHistory = () => {
           </div>
         </div>
 
+        {showSupplierMgmt ? (
+          <SupplierManagement />
+        ) : (
+          <>
         {/* Filters */}
         <Card>
           <CardHeader>
@@ -311,6 +315,8 @@ const PurchaseRequisitionHistory = () => {
               </div>
             </CardContent>
           </Card>
+        )}
+          </>
         )}
       </div>
     </Layout>

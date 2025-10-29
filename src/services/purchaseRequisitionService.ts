@@ -65,6 +65,7 @@ function transformPRData(data: any): PurchaseRequisition {
     requestedByName: data.requested_by_name,
     requestedByRole: data.requested_by_role,
     requestedByDepartment: data.requested_by_department,
+    organizationId: data.organization_id,
     history: data.history || [],
     createdAt: data.created_at,
     updatedAt: data.updated_at

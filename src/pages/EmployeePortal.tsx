@@ -86,8 +86,9 @@ const EmployeePortal = () => {
     <Layout title="Employee Portal">
       <div className="space-y-8">
         <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
-        <PurchaseRequisitionTable 
-          purchaseRequisitions={purchaseRequisitions} 
+        <PurchaseRequisitionTable
+          purchaseRequisitions={purchaseRequisitions}
+          onDialogOpenChange={setHasOpenDialog}
           title="My Purchase Requisitions"
         />
       </div>

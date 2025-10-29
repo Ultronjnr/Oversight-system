@@ -65,9 +65,14 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
         const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
         try {
+          // Check if this is a public Supabase storage URL
+          const isPublicSupabaseUrl = fileUrl.includes('supabase.co/storage/v1/object/public/');
+
           const response = await fetch(fileUrl, {
             mode: 'cors',
-            credentials: 'include',
+            // Don't include credentials for public storage URLs - Supabase CORS doesn't allow wildcard
+            // Access-Control-Allow-Origin with credentials: 'include'
+            ...(isPublicSupabaseUrl ? {} : { credentials: 'include' }),
             signal: controller.signal,
             headers: {
               'Accept': fileType || '*/*'

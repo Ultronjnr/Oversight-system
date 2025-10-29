@@ -46,6 +46,19 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
     sourceDocument: null as File | null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        const data = await supplierService.getSuppliers();
+        setSuppliers(data || []);
+      } catch (error) {
+        console.error('Failed to load suppliers:', error);
+      }
+    };
+    loadSuppliers();
+  }, []);
 
   const calculateItemTotal = (quantity: number, unitPrice: string, vatClassification: string) => {
     const price = parseFloat(unitPrice) || 0;

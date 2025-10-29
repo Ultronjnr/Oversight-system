@@ -78,6 +78,7 @@ const Dashboard = () => {
         requestedByName: user?.name,
         requestedByRole: user?.role,
         requestedByDepartment: user?.department,
+        organizationId: user?.organizationId,
         hodStatus: 'Pending',
         financeStatus: 'Pending',
         status: 'PENDING_HOD_APPROVAL'

@@ -32,12 +32,23 @@ const Dashboard = () => {
   const [isPendingPRsOpen, setIsPendingPRsOpen] = useState(false);
   const [isFinancePRsOpen, setIsFinancePRsOpen] = useState(false);
   const [dashboardCleared, setDashboardCleared] = useState(false);
+  const [hasOpenDialog, setHasOpenDialog] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
+
+      // Auto-refresh dashboard every 10 seconds, but skip if dialog is open
+      const refreshInterval = setInterval(() => {
+        if (!hasOpenDialog) {
+          console.log('🔄 Auto-refreshing dashboard...');
+          loadPurchaseRequisitions();
+        }
+      }, 10000);
+
+      return () => clearInterval(refreshInterval);
     }
-  }, [user, userRole]);
+  }, [user, userRole, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

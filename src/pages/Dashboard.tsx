@@ -38,9 +38,9 @@ const Dashboard = () => {
     if (user?.id) {
       loadPurchaseRequisitions();
 
-      // Auto-refresh dashboard every 10 seconds, but skip if dialog is open
+      // Auto-refresh dashboard every 10 seconds, but skip if any dialog is open
       const refreshInterval = setInterval(() => {
-        if (!hasOpenDialog) {
+        if (!hasOpenDialog && !isPendingPRsOpen && !isFinancePRsOpen) {
           console.log('🔄 Auto-refreshing dashboard...');
           loadPurchaseRequisitions();
         }
@@ -48,7 +48,7 @@ const Dashboard = () => {
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user, userRole, hasOpenDialog]);
+  }, [user, userRole, hasOpenDialog, isPendingPRsOpen, isFinancePRsOpen]);
 
   const loadPurchaseRequisitions = async () => {
     try {

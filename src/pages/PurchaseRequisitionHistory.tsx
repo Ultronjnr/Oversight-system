@@ -34,6 +34,7 @@ const PurchaseRequisitionHistory = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending' | 'declined'>('all');
+  const [showSupplierMgmt, setShowSupplierMgmt] = useState(false);
 
   useEffect(() => {
     if (user?.id) {

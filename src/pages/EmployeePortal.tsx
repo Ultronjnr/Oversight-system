@@ -10,12 +10,22 @@ const EmployeePortal = () => {
   const { user } = useAuth();
   const [purchaseRequisitions, setPurchaseRequisitions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasOpenDialog, setHasOpenDialog] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
+
+      // Auto-refresh employee portal every 10 seconds, but skip if dialog is open
+      const refreshInterval = setInterval(() => {
+        if (!hasOpenDialog) {
+          loadPurchaseRequisitions();
+        }
+      }, 10000);
+
+      return () => clearInterval(refreshInterval);
     }
-  }, [user]);
+  }, [user, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

@@ -527,6 +527,7 @@ export async function splitRequisition(
           requested_by_name: originalPR.requested_by_name,
           requested_by_role: originalPR.requested_by_role,
           requested_by_department: originalPR.requested_by_department,
+          organization_id: originalPR.organization_id,
           history: [
             ...originalPR.history,
             {

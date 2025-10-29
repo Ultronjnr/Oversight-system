@@ -230,6 +230,20 @@ export async function getFinancePendingPRs(organizationId?: string) {
   try {
     console.log('🔍 Fetching pending PRs for Finance', 'organizationId:', organizationId);
 
+    // If organizationId is not provided, get it from current auth user
+    let actualOrgId = organizationId;
+    if (!actualOrgId) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (user && !authError) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        actualOrgId = userData?.organization_id;
+      }
+    }
+
     // Finance should see all PRs with finance_status = 'Pending'
     // This includes both PRs pending HOD AND PRs approved by HOD but pending Finance
     let query = supabase
@@ -238,9 +252,10 @@ export async function getFinancePendingPRs(organizationId?: string) {
       .eq('finance_status', 'Pending')
       .neq('status', 'Rejected');
 
-    // Add organization filter if provided
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
+    // Add organization filter - required for RLS
+    if (actualOrgId) {
+      query = query.eq('organization_id', actualOrgId);
+      console.log('📋 Filtering by organization:', actualOrgId);
     }
 
     const { data, error } = await query

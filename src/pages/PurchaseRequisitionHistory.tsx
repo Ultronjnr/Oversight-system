@@ -151,18 +151,37 @@ const PurchaseRequisitionHistory = () => {
         {/* Header */}
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-2xl font-bold mb-2">Purchase Requisition History</h2>
-            <p className="text-gray-600">View all purchase requisitions {user?.role === 'Employee' ? 'you have submitted' : user?.role === 'HOD' ? 'in your department' : 'in your organization'}</p>
+            <h2 className="text-2xl font-bold mb-2">
+              {showSupplierMgmt ? 'Supplier Management' : 'Purchase Requisition History'}
+            </h2>
+            <p className="text-gray-600">
+              {showSupplierMgmt ? 'Manage approved suppliers' : `View all purchase requisitions ${user?.role === 'Employee' ? 'you have submitted' : user?.role === 'HOD' ? 'in your department' : 'in your organization'}`}
+            </p>
           </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="flex gap-2">
+            {user?.role === 'Finance' && (
+              <Button
+                onClick={() => setShowSupplierMgmt(!showSupplierMgmt)}
+                variant={showSupplierMgmt ? 'default' : 'outline'}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Package className="h-4 w-4" />
+                {showSupplierMgmt ? 'Back to History' : 'Manage Suppliers'}
+              </Button>
+            )}
+            {!showSupplierMgmt && (
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Filters */}

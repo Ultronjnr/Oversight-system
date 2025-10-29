@@ -17,20 +17,23 @@ const FinancePortal = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSupplierMgmt, setShowSupplierMgmt] = useState(false);
+  const [hasOpenDialog, setHasOpenDialog] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
 
-      // Auto-refresh Finance portal every 10 seconds to catch HOD approvals in real-time
+      // Auto-refresh Finance portal every 10 seconds, but skip if dialog is open
       const refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing Finance portal...');
-        loadPurchaseRequisitions();
+        if (!hasOpenDialog) {
+          console.log('🔄 Auto-refreshing Finance portal...');
+          loadPurchaseRequisitions();
+        }
       }, 10000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user]);
+  }, [user, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

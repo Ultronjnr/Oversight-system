@@ -78,9 +78,9 @@ const Dashboard = () => {
         requestedByName: user?.name,
         requestedByRole: user?.role,
         requestedByDepartment: user?.department,
-        hodStatus: userRole === 'HOD' ? 'Approved' : 'Pending',
-        financeStatus: userRole === 'Finance' ? 'Approved' : 'Pending',
-        status: userRole === 'Finance' ? 'APPROVED' : userRole === 'HOD' ? 'PENDING_FINANCE_APPROVAL' : 'PENDING_HOD_APPROVAL'
+        hodStatus: 'Pending',
+        financeStatus: 'Pending',
+        status: 'PENDING_HOD_APPROVAL'
       };
 
       console.log('📝 Submitting PR:', { transactionId: routedPR.transactionId, userRole });
@@ -90,10 +90,15 @@ const Dashboard = () => {
         setMyPurchaseRequisitions(prev => [...prev, savedPR]);
         setIsNewPROpen(false);
 
-        // Reload Finance PRs so they see new submissions in real-time
+        // Reload pending PRs based on user role
+        if (userRole === 'HOD' && user?.department) {
+          const hodPRs = await prService.getHODPendingPRs(user.department);
+          setPendingEmployeePRs(hodPRs || []);
+        }
+
         if (userRole === 'Finance') {
-          const updatedFinancePRs = await prService.getFinancePendingPRs();
-          setFinanceApprovalPRs(updatedFinancePRs || []);
+          const financePRs = await prService.getFinancePendingPRs();
+          setFinanceApprovalPRs(financePRs || []);
         }
 
         toast({

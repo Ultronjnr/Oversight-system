@@ -164,24 +164,36 @@ const Dashboard = () => {
     try {
       const status = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
       
-      await prService.updatePRStatus(prId, undefined, status, {
-        history: [{
-          status: `Finance ${status}`,
-          date: new Date().toISOString(),
-          by: user?.email,
-          action: status === 'Approved' ? 'FINANCE_APPROVE' : 'FINANCE_DECLINE'
-        }]
-      });
+      if (finalizationData.decision === 'approve') {
+        await prService.approveRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments
+        );
 
-      await loadPurchaseRequisitions();
+        toast({
+          title: "✅ PR Approved by Finance",
+          description: `PR ${finalizationData.transactionId} has been given final approval for payment.`,
+        });
+      } else {
+        await prService.rejectRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments || 'No reason provided'
+        );
 
-      toast({
-        title: status === 'Approved' ? "PR Approved" : "PR Declined",
-        description: status === 'Approved'
-          ? "The purchase requisition has been given final approval."
-          : "The purchase requisition has been declined.",
-        variant: status === 'Approved' ? "default" : "destructive"
-      });
+        toast({
+          title: "❌ PR Declined by Finance",
+          description: `PR ${finalizationData.transactionId} has been declined.`,
+          variant: "destructive"
+        });
+      }
+
+      setTimeout(() => {
+        loadPurchaseRequisitions();
+      }, 500);
     } catch (error) {
       console.error('Error finalizing PR:', error);
       toast({

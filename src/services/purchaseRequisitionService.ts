@@ -211,17 +211,24 @@ export async function getHODPendingPRs(department: string, organizationId?: stri
  * Get all Finance pending PRs - shows all PRs awaiting Finance review/approval
  * Includes: PRs pending HOD + PRs approved by HOD but pending Finance
  */
-export async function getFinancePendingPRs() {
+export async function getFinancePendingPRs(organizationId?: string) {
   try {
-    console.log('🔍 Fetching pending PRs for Finance');
+    console.log('🔍 Fetching pending PRs for Finance', 'organizationId:', organizationId);
 
     // Finance should see all PRs with finance_status = 'Pending'
     // This includes both PRs pending HOD AND PRs approved by HOD but pending Finance
-    const { data, error } = await supabase
+    let query = supabase
       .from('purchase_requisitions')
       .select('*')
       .eq('finance_status', 'Pending')
-      .neq('status', 'Rejected')
+      .neq('status', 'Rejected');
+
+    // Add organization filter if provided
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data, error } = await query
       .order('hod_status', { ascending: false })
       .order('created_at', { ascending: false });
 

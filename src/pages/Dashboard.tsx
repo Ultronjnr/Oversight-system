@@ -47,12 +47,12 @@ const Dashboard = () => {
       setMyPurchaseRequisitions(userPRs || []);
 
       if (userRole === 'HOD' && user.department) {
-        const hodPRs = await prService.getHODPendingPRs(user.department);
+        const hodPRs = await prService.getHODPendingPRs(user.department, user?.organizationId);
         setPendingEmployeePRs(hodPRs || []);
       }
 
       if (userRole === 'Finance') {
-        const financePRs = await prService.getFinancePendingPRs();
+        const financePRs = await prService.getFinancePendingPRs(user?.organizationId);
         setFinanceApprovalPRs(financePRs || []);
       }
 
@@ -93,12 +93,12 @@ const Dashboard = () => {
 
         // Reload pending PRs based on user role
         if (userRole === 'HOD' && user?.department) {
-          const hodPRs = await prService.getHODPendingPRs(user.department);
+          const hodPRs = await prService.getHODPendingPRs(user.department, user?.organizationId);
           setPendingEmployeePRs(hodPRs || []);
         }
 
         if (userRole === 'Finance') {
-          const financePRs = await prService.getFinancePendingPRs();
+          const financePRs = await prService.getFinancePendingPRs(user?.organizationId);
           setFinanceApprovalPRs(financePRs || []);
         }
 

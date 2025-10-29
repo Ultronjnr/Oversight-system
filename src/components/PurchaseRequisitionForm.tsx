@@ -528,13 +528,30 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           {/* Additional Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="supplierPreference">Preferred Supplier (Optional)</Label>
-              <Input
-                id="supplierPreference"
-                value={formData.supplierPreference}
-                onChange={(e) => setFormData({ ...formData, supplierPreference: e.target.value })}
-                placeholder="Supplier name or requirement"
-              />
+              <Label htmlFor="supplierPreference">Preferred Supplier</Label>
+              <Select value={formData.supplierPreference} onValueChange={(supplierId) => {
+                const supplier = suppliers.find(s => s.id === supplierId);
+                if (supplier) {
+                  setFormData({
+                    ...formData,
+                    supplierPreference: supplier.name,
+                    deliveryLocation: supplier.address || formData.deliveryLocation
+                  });
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a supplier or type manually..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.length > 0 ? suppliers.map(supplier => (
+                    <SelectItem key={supplier.id} value={supplier.id}>
+                      {supplier.name}{supplier.contactEmail ? ` - ${supplier.contactEmail}` : ''}
+                    </SelectItem>
+                  )) : (
+                    <div className="p-2 text-sm text-muted-foreground">No suppliers available. Contact Finance to add suppliers.</div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

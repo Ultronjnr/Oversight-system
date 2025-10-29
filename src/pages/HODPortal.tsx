@@ -15,20 +15,23 @@ const HODPortal = () => {
   const [myPRs, setMyPRs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasOpenDialog, setHasOpenDialog] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadPurchaseRequisitions();
 
-      // Auto-refresh HOD portal every 10 seconds to show new submissions from employees
+      // Auto-refresh HOD portal every 10 seconds, but skip if dialog is open
       const refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing HOD portal...');
-        loadPurchaseRequisitions();
+        if (!hasOpenDialog) {
+          console.log('🔄 Auto-refreshing HOD portal...');
+          loadPurchaseRequisitions();
+        }
       }, 10000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user]);
+  }, [user, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

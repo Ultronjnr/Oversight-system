@@ -37,7 +37,7 @@ const FinancePortal = () => {
       setIsLoading(true);
       console.log('📋 Loading Finance portal PRs...');
 
-      const pendingPRs = await prService.getFinancePendingPRs();
+      const pendingPRs = await prService.getFinancePendingPRs(user?.organizationId);
       console.log('✅ Loaded Finance pending PRs:', pendingPRs?.length || 0);
       setFinancePendingPRs(pendingPRs || []);
 

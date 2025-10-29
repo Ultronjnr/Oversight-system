@@ -36,7 +36,7 @@ const HODPortal = () => {
       console.log('📋 Loading HOD portal PRs for department:', user?.department);
 
       if (user?.department) {
-        const hodPendingPRs = await prService.getHODPendingPRs(user.department);
+        const hodPendingPRs = await prService.getHODPendingPRs(user.department, user?.organizationId);
         console.log('✅ Loaded HOD pending PRs:', hodPendingPRs?.length || 0);
         setPendingPRs(hodPendingPRs || []);
       }

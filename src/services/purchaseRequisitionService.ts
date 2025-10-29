@@ -119,6 +119,7 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
         requested_by_name: pr.requestedByName || null,
         requested_by_role: pr.requestedByRole || null,
         requested_by_department: pr.requestedByDepartment || null,
+        organization_id: pr.organizationId || null,
         history: pr.history && pr.history.length > 0 ? pr.history : initialHistory
       })
       .select();

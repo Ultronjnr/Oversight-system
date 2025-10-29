@@ -36,7 +36,7 @@ const Layout = ({ children, title }: LayoutProps) => {
         break;
     }
 
-    links.push({ href: '/quotes/history', label: 'Purchase Requisition History', icon: History });
+    links.push({ href: '/pr-history', label: 'Purchase Requisition History', icon: History });
 
     // Add admin portal access for admin users
     if ((user?.role === 'Admin' || user?.role === 'SuperUser') && !links.some(link => link.href.includes('portal'))) {

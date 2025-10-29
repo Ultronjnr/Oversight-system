@@ -177,16 +177,22 @@ export async function getUserPurchaseRequisitions(userId: string) {
 /**
  * Get all pending PRs for HOD review
  */
-export async function getHODPendingPRs(department: string) {
+export async function getHODPendingPRs(department: string, organizationId?: string) {
   try {
-    console.log('🔍 Fetching pending PRs for HOD department:', department);
+    console.log('🔍 Fetching pending PRs for HOD department:', department, 'organizationId:', organizationId);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('purchase_requisitions')
       .select('*')
       .eq('requested_by_department', department)
-      .eq('hod_status', 'Pending')
-      .order('created_at', { ascending: false });
+      .eq('hod_status', 'Pending');
+
+    // Add organization filter if provided
+    if (organizationId) {
+      query = query.eq('organization_id', organizationId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error fetching HOD PRs:', error);

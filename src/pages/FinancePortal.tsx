@@ -180,37 +180,56 @@ const FinancePortal = () => {
     <Layout title="Finance Portal">
       <div className="space-y-8">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Finance Approval Queue</h2>
-          <Button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <h2 className="text-2xl font-bold">{showSupplierMgmt ? 'Supplier Management' : 'Finance Approval Queue'}</h2>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowSupplierMgmt(!showSupplierMgmt)}
+              variant={showSupplierMgmt ? 'default' : 'outline'}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Package className="h-4 w-4" />
+              {showSupplierMgmt ? 'Back to PRs' : 'Manage Suppliers'}
+            </Button>
+            {!showSupplierMgmt && (
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+            )}
+          </div>
         </div>
 
-        {financePendingPRs.length > 0 && (
-          <PurchaseRequisitionTable 
-            purchaseRequisitions={financePendingPRs}
-            showEmployeeName={true}
-            showActions={true}
-            actionRole="Finance"
-            onFinalize={handleFinanceApprove}
-            onSplit={handleSplitPR}
-            title="Purchase Requisitions for Final Approval"
-          />
+        {showSupplierMgmt ? (
+          <SupplierManagement />
+        ) : (
+          <>
+            {financePendingPRs.length > 0 && (
+              <PurchaseRequisitionTable
+                purchaseRequisitions={financePendingPRs}
+                showEmployeeName={true}
+                showActions={true}
+                actionRole="Finance"
+                onFinalize={handleFinanceApprove}
+                onSplit={handleSplitPR}
+                title="Purchase Requisitions for Final Approval"
+              />
+            )}
+
+            <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
+
+            <PurchaseRequisitionTable
+              purchaseRequisitions={myPRs}
+              title="My Purchase Requisitions"
+            />
+          </>
         )}
-        
-        <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
-        
-        <PurchaseRequisitionTable 
-          purchaseRequisitions={myPRs} 
-          title="My Purchase Requisitions"
-        />
       </div>
     </Layout>
   );

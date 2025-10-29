@@ -181,15 +181,30 @@ export async function getHODPendingPRs(department: string, organizationId?: stri
   try {
     console.log('🔍 Fetching pending PRs for HOD department:', department, 'organizationId:', organizationId);
 
+    // If organizationId is not provided, get it from current auth user
+    let actualOrgId = organizationId;
+    if (!actualOrgId) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (user && !authError) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        actualOrgId = userData?.organization_id;
+      }
+    }
+
     let query = supabase
       .from('purchase_requisitions')
       .select('*')
       .eq('requested_by_department', department)
       .eq('hod_status', 'Pending');
 
-    // Add organization filter if provided
-    if (organizationId) {
-      query = query.eq('organization_id', organizationId);
+    // Add organization filter - required for RLS
+    if (actualOrgId) {
+      query = query.eq('organization_id', actualOrgId);
+      console.log('📋 Filtering by organization:', actualOrgId);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

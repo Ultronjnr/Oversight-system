@@ -22,11 +22,11 @@ const FinancePortal = () => {
     if (user?.id) {
       loadPurchaseRequisitions();
 
-      // Auto-refresh Finance portal every 30 seconds to show new submissions
+      // Auto-refresh Finance portal every 10 seconds to catch HOD approvals in real-time
       const refreshInterval = setInterval(() => {
         console.log('🔄 Auto-refreshing Finance portal...');
         loadPurchaseRequisitions();
-      }, 30000);
+      }, 10000);
 
       return () => clearInterval(refreshInterval);
     }

@@ -526,8 +526,9 @@ export async function splitRequisition(
           history: [
             ...originalPR.history,
             {
-              action: 'Split',
+              action: 'Split Processed',
               by: splitterName,
+              role: actorRole || 'Finance',
               timestamp,
               parentId: prId,
               notes: split.notes

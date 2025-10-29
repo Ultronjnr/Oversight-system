@@ -382,6 +382,7 @@ const Dashboard = () => {
                   actionRole="Finance"
                   onFinalize={handleFinanceFinalize}
                   onSplit={handleSplitPR}
+                  onDialogOpenChange={setHasOpenDialog}
                   title=""
                 />
               </DialogContent>
@@ -413,6 +414,7 @@ const Dashboard = () => {
         <div className="glass-card hover-glow premium-shadow-lg animate-fade-in-up">
           <PurchaseRequisitionTable
             purchaseRequisitions={displayedPRs}
+            onDialogOpenChange={setHasOpenDialog}
             title="My Purchase Requisitions"
           />
         </div>

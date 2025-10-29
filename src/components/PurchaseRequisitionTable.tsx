@@ -70,6 +70,7 @@ interface PurchaseRequisitionTableProps {
   onFinalize?: (prId: string, data: any) => void;
   onSplit?: (prId: string, splitData: any) => void;
   onRefresh?: () => void;
+  onDialogOpenChange?: (isOpen: boolean) => void;
   title: string;
 }
 

@@ -205,6 +205,7 @@ const HODPortal = () => {
             actionRole="HOD"
             onFinalize={handleHODFinalize}
             onSplit={handleSplitPR}
+            onDialogOpenChange={setHasOpenDialog}
             title="Pending Employee Purchase Requisitions"
           />
         )}

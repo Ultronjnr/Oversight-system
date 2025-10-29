@@ -20,11 +20,11 @@ const HODPortal = () => {
     if (user?.id) {
       loadPurchaseRequisitions();
 
-      // Auto-refresh HOD portal every 30 seconds to show new submissions from employees
+      // Auto-refresh HOD portal every 10 seconds to show new submissions from employees
       const refreshInterval = setInterval(() => {
         console.log('🔄 Auto-refreshing HOD portal...');
         loadPurchaseRequisitions();
-      }, 30000);
+      }, 10000);
 
       return () => clearInterval(refreshInterval);
     }

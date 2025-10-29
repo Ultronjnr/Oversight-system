@@ -16,6 +16,7 @@ const FinancePortal = () => {
   const [myPRs, setMyPRs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSupplierMgmt, setShowSupplierMgmt] = useState(false);
 
   useEffect(() => {
     if (user?.id) {

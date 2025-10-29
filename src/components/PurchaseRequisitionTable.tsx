@@ -83,6 +83,7 @@ const PurchaseRequisitionTable = ({
   onDecline,
   onFinalize,
   onSplit,
+  onDialogOpenChange,
   title
 }: PurchaseRequisitionTableProps) => {
   const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
@@ -90,6 +91,11 @@ const PurchaseRequisitionTable = ({
   const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [isFinalizationOpen, setIsFinalizationOpen] = useState(false);
   const [detailsTab, setDetailsTab] = useState<'items' | 'history'>('items');
+
+  // Notify parent when dialog state changes
+  useEffect(() => {
+    onDialogOpenChange?.(isDetailsOpen || isSplitOpen || isFinalizationOpen);
+  }, [isDetailsOpen, isSplitOpen, isFinalizationOpen, onDialogOpenChange]);
   
   const getStatusBadge = (hodStatus: string, financeStatus: string, urgencyLevel: string) => {
     if (financeStatus === 'Approved') {

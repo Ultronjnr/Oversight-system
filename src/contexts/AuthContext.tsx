@@ -7,6 +7,7 @@ interface User {
   role: 'Employee' | 'HOD' | 'Finance' | 'Admin' | 'SuperUser';
   name: string;
   department?: string;
+  organizationId?: string;
   permissions?: string[];
 }
 

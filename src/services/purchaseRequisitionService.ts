@@ -471,10 +471,11 @@ export async function splitRequisition(
     totalAmount: number;
     notes?: string;
   }>,
-  splitterName: string
+  splitterName: string,
+  splitterRole: 'HOD' | 'Finance' = 'Finance'
 ) {
   try {
-    console.log('📊 Splitting PR:', { prId, numberOfSplits: splits.length });
+    console.log('📊 Splitting PR:', { prId, numberOfSplits: splits.length, splitterRole });
 
     // Get original PR
     const { data: originalPR, error: fetchError } = await supabase
@@ -528,7 +529,7 @@ export async function splitRequisition(
             {
               action: 'Split Processed',
               by: splitterName,
-              role: actorRole || 'Finance',
+              role: splitterRole,
               timestamp,
               parentId: prId,
               notes: split.notes
@@ -557,7 +558,7 @@ export async function splitRequisition(
           {
             action: 'Split Processed',
             by: splitterName,
-            role: actorRole || 'Finance',
+            role: splitterRole,
             timestamp,
             splitInto: splitIds
           }

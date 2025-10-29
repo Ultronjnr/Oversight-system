@@ -425,12 +425,8 @@ export async function rejectRequisition(
 
     if (rejectorRole === 'HOD') {
       updateData.hod_status = 'Rejected';
-      updateData.hod_rejected_at = timestamp;
-      updateData.hod_rejected_by = rejectorName;
     } else if (rejectorRole === 'Finance') {
       updateData.finance_status = 'Rejected';
-      updateData.finance_rejected_at = timestamp;
-      updateData.finance_rejected_by = rejectorName;
     }
 
     updateData.status = 'Rejected';

@@ -44,6 +44,7 @@ const App = () => {
             <Route path="/superuser/portal" element={<Suspense fallback={<LoadingFallback />}><SuperAdminPanel /></Suspense>} />
             <Route path="/super-admin" element={<Suspense fallback={<LoadingFallback />}><SuperAdminPanel /></Suspense>} />
             <Route path="/quotes/history" element={<Suspense fallback={<LoadingFallback />}><QuoteHistory /></Suspense>} />
+            <Route path="/pr-history" element={<Suspense fallback={<LoadingFallback />}><PurchaseRequisitionHistory /></Suspense>} />
             <Route path="/analytics" element={<Suspense fallback={<LoadingFallback />}><AnalyticsOverview /></Suspense>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

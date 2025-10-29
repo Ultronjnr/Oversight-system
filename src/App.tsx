@@ -11,6 +11,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 // Lazy load pages that use heavy dependencies like recharts
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const QuoteHistory = lazy(() => import("./pages/QuoteHistory"));
+const PurchaseRequisitionHistory = lazy(() => import("./pages/PurchaseRequisitionHistory"));
 const AnalyticsOverview = lazy(() => import("./pages/AnalyticsOverview"));
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const SuperAdminPanel = lazy(() => import("./pages/SuperAdminPanel"));

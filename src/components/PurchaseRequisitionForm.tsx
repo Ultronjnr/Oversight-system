@@ -63,7 +63,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, {
+      items: [{
         id: Date.now().toString(),
         itemName: '',
         description: '',
@@ -73,7 +73,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         vatClassification: 'VAT_APPLICABLE' as 'VAT_APPLICABLE' | 'NO_VAT',
         technicalSpecs: '',
         businessJustification: ''
-      }]
+      }, ...prev.items]
     }));
   };
 

@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               role: userData.role as User['role'],
               name: userData.name,
               department: userData.department,
+              organizationId: userData.organization_id,
               permissions: userData.permissions || [],
             };
             setUser(normalized);
@@ -93,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 role: userData.role as User['role'],
                 name: userData.name,
                 department: userData.department,
+                organizationId: userData.organization_id,
                 permissions: userData.permissions || [],
               };
               setUser(normalized);

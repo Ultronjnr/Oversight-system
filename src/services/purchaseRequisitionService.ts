@@ -27,6 +27,7 @@ export interface PurchaseRequisition {
   requestedByName?: string;
   requestedByRole?: string;
   requestedByDepartment?: string;
+  organizationId?: string;
   history: any[];
   createdAt?: string;
   updatedAt?: string;

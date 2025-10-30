@@ -122,7 +122,7 @@ const SimpleItemSplitModal = ({ isOpen, onClose, purchaseRequisition, onSplit }:
       onSplit({
         splitPRs,
         originalUpdate,
-        splitReason: `Split into ${splitItems.length} separate PRs by items`
+        splitReason: `Split into ${splitPRs.length} separate PRs by items`
       });
 
       toast({

@@ -192,6 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: fallbackRole,
           name: sUser.user_metadata?.name || sUser.email?.split('@')[0] || 'User',
           department: sUser.user_metadata?.department,
+          organizationId: sUser.user_metadata?.organization_id,
           permissions: sUser.user_metadata?.permissions || [],
         };
 

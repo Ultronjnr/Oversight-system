@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
 import PurchaseRequisitionTable from '../components/PurchaseRequisitionTable';
 import DashboardStats from '../components/DashboardStats';
+import SupplierManagement from '../components/SupplierManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { useRoleBasedAccess } from '../hooks/useRoleBasedAccess';
 import { toast } from '@/hooks/use-toast';
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Clock, CheckCircle, BarChart3, FileText, Shield, Settings, ShoppingCart, X } from 'lucide-react';
+import { Plus, Clock, CheckCircle, BarChart3, FileText, Shield, Settings, ShoppingCart, X, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as prService from '../services/purchaseRequisitionService';
 
@@ -33,6 +34,7 @@ const Dashboard = () => {
   const [isFinancePRsOpen, setIsFinancePRsOpen] = useState(false);
   const [dashboardCleared, setDashboardCleared] = useState(false);
   const [hasOpenDialog, setHasOpenDialog] = useState(false);
+  const [showSupplierMgmt, setShowSupplierMgmt] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -335,6 +337,17 @@ const Dashboard = () => {
             </Button>
           )}
 
+          {userRole === 'Finance' && (
+            <Button
+              onClick={() => setShowSupplierMgmt(!showSupplierMgmt)}
+              variant={showSupplierMgmt ? 'default' : 'outline'}
+              className="flex items-center gap-2 hover-lift"
+            >
+              <Package className="w-4 h-4" />
+              {showSupplierMgmt ? 'Back to Dashboard' : 'Manage Suppliers'}
+            </Button>
+          )}
+
           <Dialog open={isNewPROpen} onOpenChange={setIsNewPROpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 hover-lift animate-glow">
@@ -429,14 +442,20 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Main Content - My Purchase Requisitions */}
-        <div className="glass-card hover-glow premium-shadow-lg animate-fade-in-up">
-          <PurchaseRequisitionTable
-            purchaseRequisitions={displayedPRs}
-            onDialogOpenChange={setHasOpenDialog}
-            title="My Purchase Requisitions"
-          />
-        </div>
+        {showSupplierMgmt ? (
+          <SupplierManagement />
+        ) : (
+          <>
+            {/* Main Content - My Purchase Requisitions */}
+            <div className="glass-card hover-glow premium-shadow-lg animate-fade-in-up">
+              <PurchaseRequisitionTable
+                purchaseRequisitions={displayedPRs}
+                onDialogOpenChange={setHasOpenDialog}
+                title="My Purchase Requisitions"
+              />
+            </div>
+          </>
+        )}
       </div>
     </Layout>
   );

@@ -52,82 +52,29 @@ const SimpleItemSplitModal = ({ isOpen, onClose, purchaseRequisition, onSplit }:
     setIsSubmitting(true);
 
     try {
-      const timestamp = Date.now();
-      const splitPRs: any[] = [];
+      const splitData: any[] = [];
 
-      // Create a PR for each selected item
-      selectedItems.forEach((itemIndex, splitIndex) => {
+      // Create split data for each selected item (using snake_case for database)
+      selectedItems.forEach((itemIndex) => {
         const item = purchaseRequisition.items[itemIndex];
         const itemAmount = parseFloat(item.totalPrice) || 0;
 
-        splitPRs.push({
-          transactionId: `${purchaseRequisition.transactionId}-SPLIT-${splitIndex + 1}`,
-          type: purchaseRequisition.type || 'PURCHASE_REQUISITION',
-          requestDate: purchaseRequisition.requestDate,
-          dueDate: purchaseRequisition.dueDate,
-          paymentDueDate: purchaseRequisition.paymentDueDate,
+        splitData.push({
           items: [{ ...item }],
-          urgencyLevel: purchaseRequisition.urgencyLevel,
-          department: purchaseRequisition.department,
-          budgetCode: purchaseRequisition.budgetCode,
-          projectCode: purchaseRequisition.projectCode,
-          supplierPreference: purchaseRequisition.supplierPreference,
-          deliveryLocation: purchaseRequisition.deliveryLocation,
-          specialInstructions: purchaseRequisition.specialInstructions,
           totalAmount: itemAmount,
-          currency: purchaseRequisition.currency,
-          requestedBy: purchaseRequisition.requestedBy,
-          requestedByName: purchaseRequisition.requestedByName,
-          requestedByRole: purchaseRequisition.requestedByRole,
-          requestedByDepartment: purchaseRequisition.requestedByDepartment,
-          organizationId: purchaseRequisition.organizationId,
-          hodStatus: 'Pending',
-          financeStatus: 'Pending',
-          status: 'PENDING_HOD_APPROVAL',
-          history: [
-            ...purchaseRequisition.history,
-            {
-              action: 'Split Created',
-              by: purchaseRequisition.requestedByName,
-              role: 'System',
-              timestamp: new Date().toISOString(),
-              comments: `Split from ${purchaseRequisition.transactionId}: Item "${item.description}"`
-            }
-          ]
+          notes: `Split from original PR: Item "${item.description}"`
         });
       });
 
-      // Calculate remaining amount (items not selected)
-      const remainingAmount = purchaseRequisition.items
-        .filter((_: any, idx: number) => !selectedItems.includes(idx))
-        .reduce((sum: number, item: any) => sum + (parseFloat(item.totalPrice) || 0), 0);
-
-      const originalUpdate = {
-        ...purchaseRequisition,
-        status: 'Split',
-        totalAmount: remainingAmount,
-        items: purchaseRequisition.items.filter((_: any, idx: number) => !selectedItems.includes(idx)),
-        history: [
-          ...purchaseRequisition.history,
-          {
-            action: 'Split Processed',
-            by: purchaseRequisition.requestedByName,
-            role: 'System',
-            timestamp: new Date().toISOString(),
-            comments: `${selectedItems.length} item(s) split into separate PRs`
-          }
-        ]
-      };
-
+      // Pass data in the format expected by the service
       onSplit({
-        splitPRs,
-        originalUpdate,
-        splitReason: `Split into ${splitPRs.length} separate PRs by items`
+        splitPRs: splitData,
+        selectedItemNames: selectedItems.map(idx => purchaseRequisition.items[idx].description)
       });
 
       toast({
         title: "Split Successful",
-        description: `Created ${splitPRs.length} new PR${splitPRs.length !== 1 ? 's' : ''} from selected items.`
+        description: `Created ${splitData.length} new PR${splitData.length !== 1 ? 's' : ''} from selected items.`
       });
 
       onClose();

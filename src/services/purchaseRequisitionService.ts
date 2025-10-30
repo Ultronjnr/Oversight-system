@@ -80,6 +80,11 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
   try {
     console.log('📝 Creating PR in Supabase:', { transactionId: pr.transactionId, timestamp: new Date().toISOString() });
 
+    // CRITICAL: Validate organization_id is present for RLS policy compliance
+    if (!pr.organizationId) {
+      throw new Error('Organization ID is required to create a purchase requisition. Please ensure your user profile is properly configured.');
+    }
+
     const timestamp = new Date().toISOString();
     const initialHistory = [
       {
@@ -119,7 +124,7 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
         requested_by_name: pr.requestedByName || null,
         requested_by_role: pr.requestedByRole || null,
         requested_by_department: pr.requestedByDepartment || null,
-        organization_id: pr.organizationId || null,
+        organization_id: pr.organizationId,
         history: pr.history && pr.history.length > 0 ? pr.history : initialHistory
       })
       .select();
@@ -135,13 +140,7 @@ export async function createPurchaseRequisition(pr: PurchaseRequisition) {
   } catch (error: any) {
     const duration = performance.now() - startTime;
     console.error('❌ Failed to create PR:', error.message, `(after ${duration.toFixed(2)}ms)`);
-    // Fall back to localStorage for offline support
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    const allPRs = savedPRs ? JSON.parse(savedPRs) : [];
-    allPRs.push(pr);
-    localStorage.setItem('purchaseRequisitions', JSON.stringify(allPRs));
-    console.warn('⚠️ PR saved to localStorage (offline mode)');
-    return pr;
+    throw error;
   }
 }
 

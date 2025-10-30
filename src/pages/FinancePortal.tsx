@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
-import PurchaseRequisitionTable from '../components/PurchaseRequisitionTable';
+import PRListView from '../components/PRListView';
 import SupplierManagement from '../components/SupplierManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';

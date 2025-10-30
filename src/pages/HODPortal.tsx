@@ -198,24 +198,17 @@ const HODPortal = () => {
         </div>
 
         {pendingPRs.length > 0 && (
-          <PurchaseRequisitionTable
+          <PRListView
             purchaseRequisitions={pendingPRs}
-            showEmployeeName={true}
             showActions={true}
             actionRole="HOD"
             onFinalize={handleHODFinalize}
             onSplit={handleSplitPR}
-            onDialogOpenChange={setHasOpenDialog}
             title="Pending Employee Purchase Requisitions"
           />
         )}
-        
+
         <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
-        
-        <PurchaseRequisitionTable 
-          purchaseRequisitions={myPRs} 
-          title="My Purchase Requisitions"
-        />
       </div>
     </Layout>
   );

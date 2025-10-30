@@ -507,6 +507,7 @@ export async function splitRequisition(
     items: any[];
     totalAmount: number;
     notes?: string;
+    originalItemIndex?: number;
   }>,
   splitterName: string,
   splitterRole: 'HOD' | 'Finance' = 'Finance'

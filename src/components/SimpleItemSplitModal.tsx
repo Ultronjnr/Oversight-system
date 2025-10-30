@@ -62,14 +62,16 @@ const SimpleItemSplitModal = ({ isOpen, onClose, purchaseRequisition, onSplit }:
         splitData.push({
           items: [{ ...item }],
           totalAmount: itemAmount,
-          notes: `Split from original PR: Item "${item.description}"`
+          notes: `Split from original PR: Item "${item.description}"`,
+          originalItemIndex: itemIndex // Include index for accurate remaining calculation
         });
       });
 
       // Pass data in the format expected by the service
       onSplit({
         splitPRs: splitData,
-        selectedItemNames: selectedItems.map(idx => purchaseRequisition.items[idx].description)
+        selectedItemNames: selectedItems.map(idx => purchaseRequisition.items[idx].description),
+        selectedItemIndices: selectedItems // Include all selected indices for service
       });
 
       toast({

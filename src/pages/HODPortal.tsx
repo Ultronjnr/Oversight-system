@@ -147,34 +147,39 @@ const HODPortal = () => {
 
   const handleSplitPR = async (prId: string, splitData: any) => {
     try {
-      const splitItems = splitData.splitPRs || splitData.splitTransactions || [];
-      
-      const originalPR = pendingPRs.find(pr => pr.id === prId);
-      if (originalPR) {
-        const updatedPR = {
-          ...originalPR,
-          ...splitData.originalUpdate,
-          updated_at: new Date().toISOString()
-        };
+      const splitItems = splitData.splitPRs || [];
 
-        await prService.updatePRStatus(prId, undefined, undefined, updatedPR);
-        
-        for (const splitPR of splitItems) {
-          await prService.createPurchaseRequisition(splitPR);
-        }
-
-        await loadPurchaseRequisitions();
-
+      if (splitItems.length === 0) {
         toast({
-          title: "Transaction Split Successfully",
-          description: `Created ${splitItems.length} new PRs.`
+          title: "No Items Selected",
+          description: "Please select at least one item to split.",
+          variant: "destructive"
         });
+        return;
       }
+
+      console.log('📊 Splitting PR:', prId, 'with', splitItems.length, 'split items');
+
+      // Use the proper split service which handles all the logic
+      await prService.splitRequisition(
+        prId,
+        splitItems,
+        user?.name || 'Unknown',
+        'HOD'
+      );
+
+      // Reload data to show new split PRs
+      await loadPurchaseRequisitions();
+
+      toast({
+        title: "Transaction Split Successfully",
+        description: `Created ${splitItems.length} new PR${splitItems.length !== 1 ? 's' : ''}.`
+      });
     } catch (error) {
-      console.error('Error splitting PR:', error);
+      console.error('❌ Error splitting PR:', error);
       toast({
         title: "Split failed",
-        description: "Failed to split the purchase requisition.",
+        description: error instanceof Error ? error.message : "Failed to split the purchase requisition.",
         variant: "destructive",
       });
     }

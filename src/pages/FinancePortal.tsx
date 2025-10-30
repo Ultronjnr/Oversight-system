@@ -214,24 +214,17 @@ const FinancePortal = () => {
         ) : (
           <>
             {financePendingPRs.length > 0 && (
-              <PurchaseRequisitionTable
+              <PRListView
                 purchaseRequisitions={financePendingPRs}
-                showEmployeeName={true}
                 showActions={true}
                 actionRole="Finance"
                 onFinalize={handleFinanceApprove}
                 onSplit={handleSplitPR}
-                onDialogOpenChange={setHasOpenDialog}
                 title="Purchase Requisitions for Final Approval"
               />
             )}
 
             <PurchaseRequisitionForm onSubmit={handleSubmitPR} />
-
-            <PurchaseRequisitionTable
-              purchaseRequisitions={myPRs}
-              title="My Purchase Requisitions"
-            />
           </>
         )}
       </div>

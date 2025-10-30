@@ -90,11 +90,11 @@ The following users are created by default:
 
 | Email | Password | Role | Department |
 |-------|----------|------|------------|
-| admin@company.com | admin123 | Admin | Administration |
-| superuser@company.com | admin123 | SuperUser | System |
-| employee@company.com | admin123 | Employee | IT |
-| hod@company.com | admin123 | HOD | IT |
-| finance@company.com | admin123 | Finance | Finance |
+| noreply@oversight.global | SuperAdmin2025 | SuperUser | System |
+| admin@oversight.global | admin123 | Admin | Administration |
+| employee@oversight.global | employee123 | Employee | IT |
+| hod@oversight.global | hod123 | HOD | IT |
+| finance@oversight.global | finance123 | Finance | Finance |
 
 ### 4.2 Test Features
 

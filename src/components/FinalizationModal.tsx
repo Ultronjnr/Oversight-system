@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -297,6 +297,13 @@ const FinalizationModal = ({ isOpen, onClose, purchaseRequisition, actionRole, o
       };
 
       onFinalize(finalizationData);
+
+      // Show success notification
+      toast({
+        title: decision === 'approve' ? '✅ PR Approved' : '❌ PR Declined',
+        description: `PR ${purchaseRequisition.transactionId} has been ${decision === 'approve' ? 'approved' : 'declined'} by ${actionRole}. ${comments}`,
+        variant: decision === 'approve' ? 'default' : 'destructive'
+      });
 
       toast({
         title: `PR ${decision === 'approve' ? 'Approved' : 'Declined'}`,
@@ -729,11 +736,11 @@ const FinalizationModal = ({ isOpen, onClose, purchaseRequisition, actionRole, o
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                              <Label>Description</Label>
+                              <Label>Preferred Supplier</Label>
                               <Input
                                 value={item.description}
                                 onChange={(e) => updateSplitItem(item.id, 'description', e.target.value)}
-                                placeholder="Item description"
+                                placeholder="e.g., Makro, Cashbuild"
                               />
                             </div>
 

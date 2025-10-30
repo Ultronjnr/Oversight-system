@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Upload, FileText, X, Hash, Calculator, Clock, Building } from 'lucide-react';
 import { generateTransactionId } from '../lib/transactionUtils';
+import { supabase } from '../lib/supabaseClient';
+import * as supplierService from '../services/supplierService';
 
 interface PurchaseRequisitionFormProps {
   onSubmit: (pr: any) => void;
@@ -43,6 +46,19 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
     sourceDocument: null as File | null,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        const data = await supplierService.getSuppliers();
+        setSuppliers(data || []);
+      } catch (error) {
+        console.error('Failed to load suppliers:', error);
+      }
+    };
+    loadSuppliers();
+  }, []);
 
   const calculateItemTotal = (quantity: number, unitPrice: string, vatClassification: string) => {
     const price = parseFloat(unitPrice) || 0;
@@ -61,7 +77,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, {
+      items: [{
         id: Date.now().toString(),
         itemName: '',
         description: '',
@@ -71,7 +87,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         vatClassification: 'VAT_APPLICABLE' as 'VAT_APPLICABLE' | 'NO_VAT',
         technicalSpecs: '',
         businessJustification: ''
-      }]
+      }, ...prev.items]
     }));
   };
 
@@ -110,7 +126,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       // Validation
       if (!formData.dueDate || !formData.paymentDueDate) {
@@ -119,6 +135,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           description: "Please fill in all required due dates.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -128,7 +145,45 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           description: "Please fill in all item names, descriptions and prices.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
+      }
+
+      // Upload file to Supabase storage if provided
+      let documentUrl: string | undefined = undefined;
+      if (formData.sourceDocument) {
+        try {
+          const fileName = `${Date.now()}-${formData.sourceDocument.name}`;
+          const storagePath = `purchase-requisitions/${transactionId}/${fileName}`;
+
+          console.log('📤 Uploading document to Supabase:', storagePath);
+
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .upload(storagePath, formData.sourceDocument);
+
+          if (error) {
+            console.error('❌ Upload error:', error);
+            throw new Error(`Failed to upload document: ${error.message}`);
+          }
+
+          // Get public URL for the uploaded file
+          const { data: publicUrlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(storagePath);
+
+          documentUrl = publicUrlData?.publicUrl;
+          console.log('✅ Document uploaded successfully:', documentUrl);
+        } catch (uploadError: any) {
+          console.error('❌ Document upload failed:', uploadError);
+          toast({
+            title: "Upload Failed",
+            description: uploadError.message || "Could not upload document. Please try again.",
+            variant: "destructive",
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const purchaseRequisition = {
@@ -157,27 +212,28 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         createdAt: new Date(),
         documentName: formData.sourceDocument?.name,
         documentType: formData.sourceDocument?.type,
-        documentUrl: formData.sourceDocument ? URL.createObjectURL(formData.sourceDocument) : undefined,
+        documentUrl: documentUrl,
       };
-      
-      onSubmit(purchaseRequisition);
-      
-      // Reset form
+
+      // Await the async onSubmit call
+      await onSubmit(purchaseRequisition);
+
+      // Only reset form after successful submission
       setFormData({
         requestDate: new Date().toISOString().split('T')[0],
         dueDate: '',
         paymentDueDate: '',
         items: [{
-      id: '1',
-      itemName: '',
-      description: '',
-      quantity: 1,
-      unitPrice: '',
-      totalPrice: '',
-      vatClassification: 'VAT_APPLICABLE',
-      technicalSpecs: '',
-      businessJustification: ''
-    }],
+          id: '1',
+          itemName: '',
+          description: '',
+          quantity: 1,
+          unitPrice: '',
+          totalPrice: '',
+          vatClassification: 'VAT_APPLICABLE',
+          technicalSpecs: '',
+          businessJustification: ''
+        }],
         urgencyLevel: 'NORMAL',
         department: user?.department || '',
         budgetCode: '',
@@ -186,11 +242,6 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
         deliveryLocation: '',
         specialInstructions: '',
         sourceDocument: null,
-      });
-      
-      toast({
-        title: "Purchase Requisition submitted successfully",
-        description: `Your PR has been submitted for approval. Reference: ${transactionId}`,
       });
     } catch (error) {
       console.error('Submit error:', error);
@@ -477,13 +528,30 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           {/* Additional Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="supplierPreference">Preferred Supplier (Optional)</Label>
-              <Input
-                id="supplierPreference"
-                value={formData.supplierPreference}
-                onChange={(e) => setFormData({ ...formData, supplierPreference: e.target.value })}
-                placeholder="Supplier name or requirement"
-              />
+              <Label htmlFor="supplierPreference">Preferred Supplier</Label>
+              <Select value={formData.supplierPreference} onValueChange={(supplierId) => {
+                const supplier = suppliers.find(s => s.id === supplierId);
+                if (supplier) {
+                  setFormData({
+                    ...formData,
+                    supplierPreference: supplier.name,
+                    deliveryLocation: supplier.address || formData.deliveryLocation
+                  });
+                }
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a supplier or type manually..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.length > 0 ? suppliers.map(supplier => (
+                    <SelectItem key={supplier.id} value={supplier.id}>
+                      {supplier.name}{supplier.contactEmail ? ` - ${supplier.contactEmail}` : ''}
+                    </SelectItem>
+                  )) : (
+                    <div className="p-2 text-sm text-muted-foreground">No suppliers available. Contact Finance to add suppliers.</div>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

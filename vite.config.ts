@@ -16,28 +16,15 @@ export default defineConfig(({ mode }) => ({
     },
   },
   server: {
-    host: true, // required for LocalTunnel
-    port: 4184, // explicit dev port (matches current environment)
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 4184,
-    },
-    allowedHosts: [
-      '.loca.lt', // allow LocalTunnel subdomains
-    ],
-  },
-  preview: {
-    port: 4184, // preview also on 4184
-    host: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 4184,
-    },
-    allowedHosts: [
-      '.loca.lt',
-    ],
+    host: '0.0.0.0',
+    port: 4184,
+    allowedHosts: 'all',
+    // Completely disable HMR - removes WebSocket connections
+    hmr: false,
+    watch: {
+      // Disable file watching to reduce resource usage
+      ignored: ['**/node_modules/**', '**/.git/**']
+    }
   },
   plugins: [
     react(),

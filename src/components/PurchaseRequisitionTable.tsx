@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { FileText, Check, X, Hash, Split, Eye, Calculator, Calendar, Building } from 'lucide-react';
+import { FileText, Check, X, Hash, Split, Eye, Calculator, Calendar, Building, History as HistoryIcon } from 'lucide-react';
 import DocumentViewer from './DocumentViewer';
 import SplitPRModal from './SplitPRModal';
 import FinalizationModal from './FinalizationModal';
+import PRHistory from './PRHistory';
 
 interface PurchaseRequisition {
   id: string;
@@ -67,24 +69,33 @@ interface PurchaseRequisitionTableProps {
   onDecline?: (prId: string) => void;
   onFinalize?: (prId: string, data: any) => void;
   onSplit?: (prId: string, splitData: any) => void;
+  onRefresh?: () => void;
+  onDialogOpenChange?: (isOpen: boolean) => void;
   title: string;
 }
 
-const PurchaseRequisitionTable = ({ 
-  purchaseRequisitions, 
-  showEmployeeName = false, 
+const PurchaseRequisitionTable = ({
+  purchaseRequisitions,
+  showEmployeeName = false,
   showActions = false,
   actionRole,
   onApprove,
   onDecline,
   onFinalize,
   onSplit,
-  title 
+  onDialogOpenChange,
+  title
 }: PurchaseRequisitionTableProps) => {
   const [selectedPR, setSelectedPR] = useState<PurchaseRequisition | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [isFinalizationOpen, setIsFinalizationOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<'items' | 'history'>('items');
+
+  // Notify parent when dialog state changes
+  useEffect(() => {
+    onDialogOpenChange?.(isDetailsOpen || isSplitOpen || isFinalizationOpen);
+  }, [isDetailsOpen, isSplitOpen, isFinalizationOpen, onDialogOpenChange]);
   
   const getStatusBadge = (hodStatus: string, financeStatus: string, urgencyLevel: string) => {
     if (financeStatus === 'Approved') {
@@ -149,6 +160,29 @@ const PurchaseRequisitionTable = ({
     setIsSplitOpen(true);
   };
 
+  const getDisplayPRs = () => {
+    // Flatten split items to show as separate rows
+    const displayPRs: (PurchaseRequisition & { isSplitItem?: boolean; splitParentId?: string })[] = [];
+
+    for (const pr of purchaseRequisitions) {
+      displayPRs.push(pr);
+
+      // If PR has split items, add them as separate rows
+      if (pr.splitItems && pr.splitItems.length > 0) {
+        for (const splitItem of pr.splitItems) {
+          displayPRs.push({
+            ...splitItem,
+            id: splitItem.id || `${pr.id}_split_${Math.random()}`,
+            isSplitItem: true,
+            splitParentId: pr.id,
+          } as any);
+        }
+      }
+    }
+
+    return displayPRs;
+  };
+
   const handleFinalizationClick = (pr: PurchaseRequisition) => {
     setSelectedPR(pr);
     setIsFinalizationOpen(true);
@@ -204,17 +238,21 @@ const PurchaseRequisitionTable = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {purchaseRequisitions.map((pr) => {
+                  {getDisplayPRs().map((pr, index) => {
                     const docInfo = getDocumentInfo(pr);
                     
                     return (
-                      <tr key={`${pr.id}-${pr.transactionId || index}`} className="border-b border-border/50 hover:bg-muted/50 transition-all duration-300 hover-lift">
+                      <tr key={`${pr.id}-${pr.transactionId || index}`} className={`border-b border-border/50 transition-all duration-300 hover-lift ${pr.isSplitItem ? 'bg-purple-50/50 hover:bg-purple-100/50' : 'hover:bg-muted/50'}`}>
                         <td className="p-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 font-mono text-sm">
-                              <Hash className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-blue-600 font-medium">
-                                {pr.transactionId || 'N/A'}
+                              {pr.isSplitItem ? (
+                                <Badge className="bg-purple-500">Split</Badge>
+                              ) : (
+                                <Hash className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              <span className={`font-medium ${pr.isSplitItem ? 'text-purple-600' : 'text-blue-600'}`}>
+                                {pr.transactionId || pr.description || 'N/A'}
                               </span>
                             </div>
                             {pr.isSplit && (
@@ -222,8 +260,13 @@ const PurchaseRequisitionTable = ({
                                 Split from {pr.originalTransactionId}
                               </Badge>
                             )}
+                            {pr.isSplitItem && pr.splitParentId && (
+                              <Badge variant="outline" className="text-xs bg-purple-50">
+                                Part of split
+                              </Badge>
+                            )}
                             <div className="text-xs text-muted-foreground">
-                              {new Date(pr.requestDate).toLocaleDateString()}
+                              {new Date(pr.requestDate || new Date()).toLocaleDateString()}
                             </div>
                           </div>
                         </td>
@@ -255,11 +298,21 @@ const PurchaseRequisitionTable = ({
                         </td>
                         <td className="p-3">
                           <div className="font-medium text-foreground">
-                            {formatCurrency(pr.totalAmount, pr.currency)}
+                            {formatCurrency(pr.totalAmount || pr.amount || 0, pr.currency)}
                           </div>
+                          {pr.isSplitItem && (
+                            <div className="text-xs text-purple-600 font-semibold">
+                              Split Item
+                            </div>
+                          )}
                           {pr.budgetCode && (
                             <div className="text-xs text-muted-foreground">
                               Budget: {pr.budgetCode}
+                            </div>
+                          )}
+                          {pr.category && (
+                            <div className="text-xs text-muted-foreground">
+                              Category: {pr.category}
                             </div>
                           )}
                         </td>
@@ -279,48 +332,78 @@ const PurchaseRequisitionTable = ({
                           </div>
                         </td>
                         <td className="p-3">
-                          {hasDocument(pr) ? (
-                            <DocumentViewer
-                              fileName={docInfo.fileName}
-                              fileUrl={docInfo.fileUrl}
-                              fileType={docInfo.fileType}
-                              quoteId={pr.id}
-                            />
-                          ) : (
-                            <span className="text-muted-foreground text-sm">No document</span>
-                          )}
+                          <div className="flex gap-2 items-center">
+                            {hasDocument(pr) ? (
+                              <DocumentViewer
+                                fileName={docInfo.fileName}
+                                fileUrl={docInfo.fileUrl}
+                                fileType={docInfo.fileType}
+                                quoteId={pr.id}
+                              />
+                            ) : (
+                              <span className="text-muted-foreground text-sm">No document</span>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                              onClick={() => {
+                                setSelectedPR(pr);
+                                setDetailsTab('history');
+                                setIsDetailsOpen(true);
+                              }}
+                              title="View PR History"
+                            >
+                              <HistoryIcon className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                         <td className="p-3">{getStatusBadge(pr.hodStatus, pr.financeStatus, pr.urgencyLevel)}</td>
                         {showActions && (
                           <td className="p-3">
-                            {canShowActions(pr) ? (
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  className={`${actionRole === 'HOD' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white hover-scale btn-shimmer`}
-                                  onClick={() => handleFinalizationClick(pr)}
-                                >
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Finalize
-                                </Button>
-                                {/* Only show Split for HOD and Finance, not Employee */}
-                                {(actionRole === 'HOD' || actionRole === 'Finance') && (
+                            <div className="flex space-x-2 items-center">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                onClick={() => {
+                                  setSelectedPR(pr);
+                                  setDetailsTab('history');
+                                  setIsDetailsOpen(true);
+                                }}
+                                title="View PR History"
+                              >
+                                <HistoryIcon className="h-4 w-4" />
+                              </Button>
+                              {canShowActions(pr) ? (
+                                <div className="flex space-x-2">
                                   <Button
                                     size="sm"
-                                    variant="outline"
-                                    className="text-purple-600 border-purple-600 hover:bg-purple-50 hover-scale btn-shimmer"
-                                    onClick={() => handleSplitClick(pr)}
+                                    className={`${actionRole === 'HOD' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'} text-white hover-scale btn-shimmer`}
+                                    onClick={() => handleFinalizationClick(pr)}
                                   >
-                                    <Split className="h-3 w-3 mr-1" />
-                                    Split
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Finalize
                                   </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                {pr.hodStatus === 'Declined' || pr.financeStatus !== 'Pending' ? 'Completed' : 'Processed'}
-                              </span>
-                            )}
+                                  {/* Only show Split for HOD and Finance, not Employee */}
+                                  {(actionRole === 'HOD' || actionRole === 'Finance') && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-purple-600 border-purple-600 hover:bg-purple-50 hover-scale btn-shimmer"
+                                      onClick={() => handleSplitClick(pr)}
+                                    >
+                                      <Split className="h-3 w-3 mr-1" />
+                                      Split
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">
+                                  {pr.hodStatus === 'Declined' || pr.financeStatus !== 'Pending' ? 'Completed' : 'Processed'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -335,54 +418,99 @@ const PurchaseRequisitionTable = ({
 
       {/* PR Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+          <DialogHeader className="flex items-center justify-between">
             <DialogTitle>Purchase Requisition Details</DialogTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsDetailsOpen(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </Button>
           </DialogHeader>
           {selectedPR && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="font-medium">Transaction ID</Label>
-                  <p className="font-mono">{selectedPR.transactionId}</p>
-                </div>
-                <div>
-                  <Label className="font-medium">Total Amount</Label>
-                  <p className="text-lg font-bold text-green-600">
-                    {formatCurrency(selectedPR.totalAmount, selectedPR.currency)}
-                  </p>
-                </div>
+              {/* Tabs */}
+              <div className="flex gap-2 border-b">
+                <Button
+                  variant={detailsTab === 'items' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDetailsTab('items')}
+                  className="gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Items & Details
+                </Button>
+                <Button
+                  variant={detailsTab === 'history' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setDetailsTab('history')}
+                  className="gap-2"
+                >
+                  <HistoryIcon className="h-4 w-4" />
+                  History
+                </Button>
               </div>
-              
-              <div>
-                <Label className="font-medium">Items</Label>
-                <div className="space-y-2 mt-2">
-                  {selectedPR.items.map((item, index) => (
-                    <Card key={item.id} className="p-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="font-medium">{item.description}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Qty: {item.quantity} × {formatCurrency(parseFloat(item.unitPrice), selectedPR.currency)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">{formatCurrency(parseFloat(item.totalPrice), selectedPR.currency)}</p>
-                          <Badge variant="outline" className="mt-1">
-                            {item.vatClassification === 'VAT_APPLICABLE' ? 'VAT Incl.' : 'No VAT'}
-                          </Badge>
-                        </div>
-                      </div>
-                      {item.technicalSpecs && (
-                        <div className="mt-2">
-                          <Label className="text-xs">Technical Specs</Label>
-                          <p className="text-sm">{item.technicalSpecs}</p>
-                        </div>
-                      )}
-                    </Card>
-                  ))}
+
+              {/* Items Tab */}
+              {detailsTab === 'items' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="font-medium">Transaction ID</Label>
+                      <p className="font-mono">{selectedPR.transactionId}</p>
+                    </div>
+                    <div>
+                      <Label className="font-medium">Total Amount</Label>
+                      <p className="text-lg font-bold text-green-600">
+                        {formatCurrency(selectedPR.totalAmount, selectedPR.currency)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="font-medium">Items</Label>
+                    <div className="space-y-2 mt-2">
+                      {selectedPR.items.map((item, index) => (
+                        <Card key={item.id} className="p-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="font-medium">{item.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Qty: {item.quantity} × {formatCurrency(parseFloat(item.unitPrice), selectedPR.currency)}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">{formatCurrency(parseFloat(item.totalPrice), selectedPR.currency)}</p>
+                              <Badge variant="outline" className="mt-1">
+                                {item.vatClassification === 'VAT_APPLICABLE' ? 'VAT Incl.' : 'No VAT'}
+                              </Badge>
+                            </div>
+                          </div>
+                          {item.technicalSpecs && (
+                            <div className="mt-2">
+                              <Label className="text-xs">Technical Specs</Label>
+                              <p className="text-sm">{item.technicalSpecs}</p>
+                            </div>
+                          )}
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* History Tab */}
+              {detailsTab === 'history' && (
+                <PRHistory
+                  history={selectedPR.history || []}
+                  transactionId={selectedPR.transactionId}
+                  status={selectedPR.status}
+                  createdAt={selectedPR.createdAt}
+                />
+              )}
             </div>
           )}
         </DialogContent>
@@ -411,10 +539,12 @@ const PurchaseRequisitionTable = ({
           onFinalize={(data) => {
             onFinalize?.(selectedPR.id, data);
             setIsFinalizationOpen(false);
+            setIsDetailsOpen(false);
           }}
           onSplit={(splitData) => {
             onSplit?.(selectedPR.id, splitData);
             setIsFinalizationOpen(false);
+            setIsDetailsOpen(false);
           }}
         />
       )}

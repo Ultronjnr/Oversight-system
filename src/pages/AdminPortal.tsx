@@ -1,7 +1,9 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { useRoleBasedAccess } from '../hooks/useRoleBasedAccess';
+import { supabase } from '../lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Users, Mail, Settings, Shield, Send, UserPlus, Eye, Trash2 } from 'lucide-react';
+import { Users, Mail, Settings, Shield, Send, UserPlus, Eye, Trash2, CheckCircle, Clock, Trash } from 'lucide-react';
 
 interface User {
   id: string;
@@ -41,6 +43,8 @@ const AdminPortal = () => {
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isEmailComposerOpen, setIsEmailComposerOpen] = useState(false);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   
   // New User Form
   const [newUser, setNewUser] = useState({
@@ -63,6 +67,7 @@ const AdminPortal = () => {
     if (canManageUsers()) {
       loadUsers();
       loadEmailTemplates();
+      loadInvitations();
     }
   }, []);
 
@@ -121,6 +126,116 @@ const AdminPortal = () => {
       }
     ];
     setEmailTemplates(mockTemplates);
+  };
+
+  const loadInvitations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setInvitations(data || []);
+    } catch (error) {
+      console.error('Error loading invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load invitations',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const cleanupExpiredInvitations = async () => {
+    setIsCleaningUp(true);
+    try {
+      const now = new Date();
+      const { data, error } = await supabase
+        .from('invitations')
+        .delete()
+        .lt('expires_at', now.toISOString())
+        .select('id');
+
+      if (error) throw error;
+
+      const deletedCount = data?.length || 0;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Cleanup Complete',
+        description: `${deletedCount} expired invitations have been removed.`,
+      });
+    } catch (error) {
+      console.error('Error cleaning up invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cleanup invitations',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
+  const cleanupUnconfirmedInvitations = async () => {
+    setIsCleaningUp(true);
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const { data, error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('status', 'pending')
+        .lt('created_at', sevenDaysAgo.toISOString())
+        .select('id');
+
+      if (error) throw error;
+
+      const deletedCount = data?.length || 0;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Cleanup Complete',
+        description: `${deletedCount} unconfirmed invitations older than 7 days have been removed.`,
+      });
+    } catch (error) {
+      console.error('Error cleaning up unconfirmed invitations:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cleanup unconfirmed invitations',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
+  const deleteInvitation = async (invitationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('invitations')
+        .delete()
+        .eq('id', invitationId);
+
+      if (error) throw error;
+
+      await loadInvitations();
+
+      toast({
+        title: 'Success',
+        description: 'Invitation has been deleted.',
+      });
+    } catch (error) {
+      console.error('Error deleting invitation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete invitation',
+        variant: 'destructive'
+      });
+    }
   };
 
   const handleAddUser = () => {
@@ -250,13 +365,17 @@ const AdminPortal = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               User Management
             </TabsTrigger>
-            <TabsTrigger value="emails" className="flex items-center gap-2">
+            <TabsTrigger value="invitations" className="flex items-center gap-2">
               <Mail className="h-4 w-4" />
+              Manage Invitations
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Send className="h-4 w-4" />
               Email Center
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
@@ -403,6 +522,117 @@ const AdminPortal = () => {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Manage Invitations Tab */}
+          <TabsContent value="invitations" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">Manage Invitations</h2>
+                <p className="text-muted-foreground mt-1">View and manage pending invitations</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={cleanupExpiredInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  {isCleaningUp ? 'Cleaning...' : 'Clean Expired'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={cleanupUnconfirmedInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  <Trash className="h-4 w-4" />
+                  {isCleaningUp ? 'Cleaning...' : 'Clean Unconfirmed'}
+                </Button>
+                <Button
+                  onClick={loadInvitations}
+                  disabled={isCleaningUp}
+                  className="flex items-center gap-2"
+                >
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            <Card className="glass-card">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left p-4 font-medium">Email</th>
+                        <th className="text-left p-4 font-medium">Role</th>
+                        <th className="text-left p-4 font-medium">Department</th>
+                        <th className="text-left p-4 font-medium">Status</th>
+                        <th className="text-left p-4 font-medium">Expires</th>
+                        <th className="text-left p-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invitations.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                            No invitations found
+                          </td>
+                        </tr>
+                      ) : (
+                        invitations.map(invitation => (
+                          <tr key={invitation.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-4">
+                              <div className="font-medium">{invitation.email}</div>
+                            </td>
+                            <td className="p-4">
+                              <Badge className={getRoleColor(invitation.role)}>{invitation.role}</Badge>
+                            </td>
+                            <td className="p-4">{invitation.department || '-'}</td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                {invitation.status === 'accepted' && (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <Badge className="bg-green-100 text-green-800">Accepted</Badge>
+                                  </>
+                                )}
+                                {invitation.status === 'pending' && (
+                                  <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>
+                                )}
+                                {invitation.status === 'expired' && (
+                                  <Badge className="bg-red-100 text-red-800">Expired</Badge>
+                                )}
+                                {invitation.status === 'cancelled' && (
+                                  <Badge className="bg-gray-100 text-gray-800">Cancelled</Badge>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-4 text-sm text-muted-foreground">
+                              {new Date(invitation.expires_at).toLocaleDateString()}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-red-600"
+                                  onClick={() => deleteInvitation(invitation.id)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

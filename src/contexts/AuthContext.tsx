@@ -7,6 +7,7 @@ interface User {
   role: 'Employee' | 'HOD' | 'Finance' | 'Admin' | 'SuperUser';
   name: string;
   department?: string;
+  organizationId?: string;
   permissions?: string[];
 }
 
@@ -32,9 +33,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+
         const sUser = data.session?.user;
         if (sUser) {
           // Get user details from public.users table
@@ -42,15 +48,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .from('users')
             .select('*')
             .eq('id', sUser.id)
-            .single();
+            .maybeSingle();
 
-          if (userData && !userError) {
+          if (mounted && userData && !userError) {
             const normalized: User = {
               id: userData.id,
               email: userData.email,
               role: userData.role as User['role'],
               name: userData.name,
               department: userData.department,
+              organizationId: userData.organization_id,
               permissions: userData.permissions || [],
             };
             setUser(normalized);
@@ -60,43 +67,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.warn('Auth initialization error:', error);
       }
-      setIsLoading(false);
+      if (mounted) setIsLoading(false);
     };
+
     init();
 
+    // Set up auth state change listener
     try {
-      const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!mounted) return;
+
         const sUser = session?.user;
         if (sUser) {
-          // Get user details from public.users table
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', sUser.id)
-            .single();
+          try {
+            // Get user details from public.users table
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', sUser.id)
+              .maybeSingle();
 
-          if (userData && !userError) {
-            const normalized: User = {
-              id: userData.id,
-              email: userData.email,
-              role: userData.role as User['role'],
-              name: userData.name,
-              department: userData.department,
-              permissions: userData.permissions || [],
-            };
-            setUser(normalized);
-            localStorage.setItem('user', JSON.stringify(normalized));
+            if (mounted && userData && !userError) {
+              const normalized: User = {
+                id: userData.id,
+                email: userData.email,
+                role: userData.role as User['role'],
+                name: userData.name,
+                department: userData.department,
+                organizationId: userData.organization_id,
+                permissions: userData.permissions || [],
+              };
+              setUser(normalized);
+              localStorage.setItem('user', JSON.stringify(normalized));
+            }
+          } catch (userError) {
+            console.warn('Error fetching user details:', userError);
           }
         } else {
-          setUser(null);
-          localStorage.removeItem('user');
+          if (mounted) {
+            setUser(null);
+            localStorage.removeItem('user');
+          }
         }
       });
-      return () => sub.subscription.unsubscribe();
+      unsubscribe = data.subscription?.unsubscribe || null;
     } catch (error) {
       console.warn('Auth state change subscription error:', error);
-      return () => { }; // Return empty cleanup function
     }
+
+    return () => {
+      mounted = false;
+      if (unsubscribe) {
+        try {
+          unsubscribe();
+        } catch (e) {
+          console.warn('Unsubscribe error:', e);
+        }
+      }
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
@@ -105,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setIsLoading(false);
+        console.error('❌ Sign in error:', error);
         return { success: false, message: error.message || String(error) };
       }
 
@@ -114,46 +143,92 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, message: 'Authentication failed' };
       }
 
+      console.log('✅ Auth successful, fetching user profile...');
+
       // Get user details from public.users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', sUser.id)
-        .single();
+        .maybeSingle();
 
       if (userData && !userError) {
+        console.log('✅ User profile found:', { id: userData.id, role: userData.role, organizationId: userData.organization_id });
         const normalized: User = {
           id: userData.id,
           email: userData.email,
           role: userData.role as User['role'],
           name: userData.name,
           department: userData.department,
+          organizationId: userData.organization_id,
           permissions: userData.permissions || [],
         };
         setUser(normalized);
         localStorage.setItem('user', JSON.stringify(normalized));
-      } else {
         setIsLoading(false);
-        return { success: false, message: 'User profile not found' };
-      }
+        return { success: true };
+      } else {
+        console.warn('⚠️ User profile query failed:', {
+          userError: userError?.message || userError?.code,
+          userId: sUser.id,
+          email: sUser.email,
+          userErrorDetails: userError
+        });
 
-      setIsLoading(false);
-      return { success: true };
+        // Fallback: create a minimal user object from auth data
+        // This allows login to succeed even if profile query fails due to RLS
+        // First, try to get role from auth metadata, otherwise use 'Employee'
+        let fallbackRole: User['role'] = 'Employee';
+        if (sUser.user_metadata?.role) {
+          const metaRole = sUser.user_metadata.role as string;
+          if (['SuperUser', 'Admin', 'Finance', 'HOD', 'Employee'].includes(metaRole)) {
+            fallbackRole = metaRole as User['role'];
+          }
+        }
+
+        const fallbackUser: User = {
+          id: sUser.id,
+          email: sUser.email || email,
+          role: fallbackRole,
+          name: sUser.user_metadata?.name || sUser.email?.split('@')[0] || 'User',
+          department: sUser.user_metadata?.department,
+          organizationId: sUser.user_metadata?.organization_id,
+          permissions: sUser.user_metadata?.permissions || [],
+        };
+
+        console.log('⚠️ Using fallback user object:', fallbackUser);
+        setUser(fallbackUser);
+        localStorage.setItem('user', JSON.stringify(fallbackUser));
+        setIsLoading(false);
+
+        // Still succeed the login, but log the issue for debugging
+        return { success: true, message: 'Logged in (using fallback profile)' };
+      }
     } catch (err: any) {
       setIsLoading(false);
+      console.error('❌ Login error:', err);
       return { success: false, message: err?.message || 'Login failed' };
     }
   };
 
   const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('user');
     try {
+      // Clear state immediately
+      setUser(null);
+      setIsLoading(false);
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+
+      // Sign out from Supabase
       await supabase.auth.signOut();
+
+      // Force redirect to login with full page reload
+      window.location.href = '/login';
     } catch (error) {
       console.warn('Logout error:', error);
+      // Even if signOut fails, redirect to login
+      window.location.href = '/login';
     }
-    window.location.href = '/login';
   };
 
   return (

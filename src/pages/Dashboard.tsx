@@ -1,8 +1,10 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
 import PurchaseRequisitionTable from '../components/PurchaseRequisitionTable';
 import DashboardStats from '../components/DashboardStats';
+import SupplierManagement from '../components/SupplierManagement';
 import { useAuth } from '../contexts/AuthContext';
 import { useRoleBasedAccess } from '../hooks/useRoleBasedAccess';
 import { toast } from '@/hooks/use-toast';
@@ -15,194 +17,261 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Clock, CheckCircle, BarChart3, FileText, Shield, Settings, ShoppingCart, X } from 'lucide-react';
+import { Plus, Clock, CheckCircle, BarChart3, FileText, Shield, Settings, ShoppingCart, X, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { cleanupDuplicateIds } from '../utils/dataCleanup';
+import * as prService from '../services/purchaseRequisitionService';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { userRole, getPageTitle } = useRoleBasedAccess();
   const navigate = useNavigate();
   const [myPurchaseRequisitions, setMyPurchaseRequisitions] = useState<any[]>([]);
-  const [myOriginalPRs, setMyOriginalPRs] = useState<any[]>([]); // For stats calculation
   const [allPurchaseRequisitions, setAllPurchaseRequisitions] = useState<any[]>([]);
   const [pendingEmployeePRs, setPendingEmployeePRs] = useState<any[]>([]);
   const [financeApprovalPRs, setFinanceApprovalPRs] = useState<any[]>([]);
   const [isNewPROpen, setIsNewPROpen] = useState(false);
   const [isPendingPRsOpen, setIsPendingPRsOpen] = useState(false);
   const [isFinancePRsOpen, setIsFinancePRsOpen] = useState(false);
+  const [dashboardCleared, setDashboardCleared] = useState(false);
+  const [hasOpenDialog, setHasOpenDialog] = useState(false);
+  const [showSupplierMgmt, setShowSupplierMgmt] = useState(false);
 
   useEffect(() => {
-    // Clean up any duplicate IDs first
-    const hadDuplicates = cleanupDuplicateIds();
-    if (hadDuplicates) {
-      console.log('Fixed duplicate IDs in data');
+    if (user?.id) {
+      loadPurchaseRequisitions();
+
+      // Auto-refresh dashboard every 10 seconds, but skip if any dialog is open
+      const refreshInterval = setInterval(() => {
+        if (!hasOpenDialog && !isPendingPRsOpen && !isFinancePRsOpen) {
+          console.log('🔄 Auto-refreshing dashboard...');
+          loadPurchaseRequisitions();
+        }
+      }, 10000);
+
+      return () => clearInterval(refreshInterval);
     }
+  }, [user, userRole, hasOpenDialog, isPendingPRsOpen, isFinancePRsOpen]);
 
-    loadPurchaseRequisitions();
-  }, [user]);
+  const loadPurchaseRequisitions = async () => {
+    try {
+      if (!user?.id) return;
 
-  const loadPurchaseRequisitions = () => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    if (savedPRs) {
-      const prData = JSON.parse(savedPRs);
-      setAllPurchaseRequisitions(prData);
+      const userPRs = await prService.getUserPurchaseRequisitions(user.id);
+      setMyPurchaseRequisitions(userPRs || []);
 
-      // My PRs - PRs submitted by current user
-      const userPRs = prData.filter((pr: any) => pr.requestedBy === user?.id);
-      setMyPurchaseRequisitions(userPRs);
-      setMyOriginalPRs(userPRs); // Keep original data for stats
-
-      // HOD: Pending employee PRs
-      if (userRole === 'HOD') {
-        const pendingPRs = prData.filter((pr: any) =>
-          pr.requestedByRole === 'Employee' && pr.hodStatus === 'Pending'
-        );
-        setPendingEmployeePRs(pendingPRs);
+      if (userRole === 'HOD' && user.department) {
+        const hodPRs = await prService.getHODPendingPRs(user.department, user?.organizationId);
+        setPendingEmployeePRs(hodPRs || []);
       }
 
-      // Finance: PRs for final approval
       if (userRole === 'Finance') {
-        const financePRs = prData.filter((pr: any) =>
-          (pr.hodStatus === 'Approved' || pr.requestedByRole === 'Employee') &&
-          pr.financeStatus === 'Pending' &&
-          pr.requestedBy !== user?.id
-        );
-        setFinanceApprovalPRs(financePRs);
+        const financePRs = await prService.getFinancePendingPRs(user?.organizationId);
+        setFinanceApprovalPRs(financePRs || []);
       }
+
+      if (userRole === 'Admin' || userRole === 'SuperUser') {
+        const allPRs = await prService.getAllPurchaseRequisitions();
+        setAllPurchaseRequisitions(allPRs || []);
+      }
+    } catch (error) {
+      console.error('Error loading PRs:', error);
+      toast({
+        title: "Error Loading Data",
+        description: "Failed to load purchase requisitions.",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleSubmitPR = (newPR: any) => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    const allPRs = savedPRs ? JSON.parse(savedPRs) : [];
+  const handleSubmitPR = async (newPR: any) => {
+    try {
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your user profile is not properly configured with an organization. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    // Route the PR through proper procurement workflow
-    const routedPR = {
-      ...newPR,
-      hodStatus: userRole === 'HOD' ? 'Approved' : 'Pending',
-      financeStatus: userRole === 'Finance' ? 'Approved' : 'Pending',
-      status: userRole === 'Finance' ? 'APPROVED' : userRole === 'HOD' ? 'PENDING_FINANCE_APPROVAL' : 'PENDING_HOD_APPROVAL'
-    };
+      const routedPR = {
+        ...newPR,
+        requestedBy: user?.id,
+        requestedByName: user?.name,
+        requestedByRole: user?.role,
+        requestedByDepartment: user?.department,
+        organizationId: user?.organizationId,
+        hodStatus: 'Pending',
+        financeStatus: 'Pending',
+        status: 'PENDING_HOD_APPROVAL'
+      };
 
-    allPRs.push(routedPR);
-    localStorage.setItem('purchaseRequisitions', JSON.stringify(allPRs));
+      console.log('📝 Submitting PR:', { transactionId: routedPR.transactionId, userRole, organizationId: user?.organizationId });
+      const savedPR = await prService.createPurchaseRequisition(routedPR);
 
-    setMyPurchaseRequisitions(prev => [...prev, routedPR]);
-    setIsNewPROpen(false);
+      if (savedPR) {
+        setMyPurchaseRequisitions(prev => [...prev, savedPR]);
+        setIsNewPROpen(false);
 
-    toast({
-      title: "Purchase Requisition Submitted",
-      description: "Your purchase requisition has been submitted for approval.",
-    });
+        // Reload pending PRs based on user role
+        if (userRole === 'HOD' && user?.department) {
+          const hodPRs = await prService.getHODPendingPRs(user.department, user?.organizationId);
+          setPendingEmployeePRs(hodPRs || []);
+        }
+
+        if (userRole === 'Finance') {
+          const financePRs = await prService.getFinancePendingPRs(user?.organizationId);
+          setFinanceApprovalPRs(financePRs || []);
+        }
+
+        toast({
+          title: "Purchase Requisition Submitted",
+          description: `Your PR (${routedPR.transactionId}) has been submitted for approval.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error submitting PR:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit purchase requisition.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleHODFinalize = (prId: string, finalizationData: any) => {
-    updatePRStatus(prId, finalizationData.decision === 'approve' ? 'Approved' : 'Declined', 'HOD', finalizationData);
-    toast({
-      title: finalizationData.decision === 'approve' ? "PR Finalized" : "PR Declined",
-      description: finalizationData.decision === 'approve'
-        ? "The purchase requisition has been finalized and sent to Finance for final approval."
-        : "The purchase requisition has been declined.",
-      variant: finalizationData.decision === 'approve' ? "default" : "destructive"
-    });
+  const handleHODFinalize = async (prId: string, finalizationData: any) => {
+    try {
+      const status = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
+      
+      if (finalizationData.decision === 'approve') {
+        await prService.approveRequisition(
+          prId,
+          'HOD',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments
+        );
+
+        toast({
+          title: "✅ PR Approved by HOD",
+          description: `PR ${finalizationData.transactionId} has been approved. Now awaiting Finance approval.`,
+        });
+      } else {
+        await prService.rejectRequisition(
+          prId,
+          'HOD',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments || 'No reason provided'
+        );
+
+        toast({
+          title: "❌ PR Declined by HOD",
+          description: `PR ${finalizationData.transactionId} has been declined.`,
+          variant: "destructive"
+        });
+      }
+
+      setTimeout(() => {
+        loadPurchaseRequisitions();
+      }, 500);
+    } catch (error) {
+      console.error('Error finalizing PR:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update PR status.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleHODDecline = (prId: string) => {
-    updatePRStatus(prId, 'Declined', 'HOD');
-    toast({
-      title: "PR Declined",
-      description: "The purchase requisition has been declined.",
-      variant: "destructive",
-    });
+  const handleFinanceFinalize = async (prId: string, finalizationData: any) => {
+    try {
+      const status = finalizationData.decision === 'approve' ? 'Approved' : 'Declined';
+      
+      if (finalizationData.decision === 'approve') {
+        await prService.approveRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments
+        );
+
+        toast({
+          title: "✅ PR Approved by Finance",
+          description: `PR ${finalizationData.transactionId} has been given final approval for payment.`,
+        });
+      } else {
+        await prService.rejectRequisition(
+          prId,
+          'Finance',
+          user?.name || user?.email || 'Unknown',
+          finalizationData.comments || 'No reason provided'
+        );
+
+        toast({
+          title: "❌ PR Declined by Finance",
+          description: `PR ${finalizationData.transactionId} has been declined.`,
+          variant: "destructive"
+        });
+      }
+
+      setTimeout(() => {
+        loadPurchaseRequisitions();
+      }, 500);
+    } catch (error) {
+      console.error('Error finalizing PR:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update PR status.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleFinanceFinalize = (prId: string, finalizationData: any) => {
-    updatePRStatus(prId, finalizationData.decision === 'approve' ? 'Approved' : 'Declined', 'Finance', finalizationData);
-    toast({
-      title: finalizationData.decision === 'approve' ? "PR Approved" : "PR Declined",
-      description: finalizationData.decision === 'approve'
-        ? "The purchase requisition has been given final approval."
-        : "The purchase requisition has been declined by Finance.",
-      variant: finalizationData.decision === 'approve' ? "default" : "destructive"
-    });
-  };
-
-  const handleFinanceDecline = (prId: string) => {
-    updatePRStatus(prId, 'Declined', 'Finance');
-    toast({
-      title: "PR Declined",
-      description: "The purchase requisition has been declined by Finance.",
-      variant: "destructive",
-    });
-  };
-
-  const handleSplitPR = (prId: string, splitData: any) => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    if (savedPRs) {
-      const allPRs = JSON.parse(savedPRs);
-
-      // Handle both old splitPRs format and new splitTransactions format
+  const handleSplitPR = async (prId: string, splitData: any) => {
+    try {
       const splitItems = splitData.splitPRs || splitData.splitTransactions || [];
 
-      const updatedPRs = allPRs.map((pr: any) =>
-        pr.id === prId ? splitData.originalUpdate : pr
+      if (splitItems.length === 0) {
+        toast({
+          title: "No Items Selected",
+          description: "Please select at least one item to split.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your organization is not properly configured. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('📊 Splitting PR from Dashboard:', { prId, splitItems: splitItems.length, organizationId: user?.organizationId });
+
+      // Use the proper split service which handles organization_id correctly
+      await prService.splitRequisition(
+        prId,
+        splitItems,
+        user?.name || 'Unknown',
+        'Employee'
       );
 
-      // Add new split PRs/transactions
-      updatedPRs.push(...splitItems);
-
-      localStorage.setItem('purchaseRequisitions', JSON.stringify(updatedPRs));
-      loadPurchaseRequisitions();
+      await loadPurchaseRequisitions();
 
       toast({
         title: "Transaction Split Successfully",
-        description: `Created ${splitItems.length} new transactions automatically.`
+        description: `Created ${splitItems.length} new PR${splitItems.length !== 1 ? 's' : ''}.`
       });
-    }
-  };
-
-  const updatePRStatus = (prId: string, status: 'Approved' | 'Declined', role: 'HOD' | 'Finance', finalizationData?: any) => {
-    const savedPRs = localStorage.getItem('purchaseRequisitions');
-    if (savedPRs) {
-      const allPRs = JSON.parse(savedPRs);
-      const updatedPRs = allPRs.map((pr: any) => {
-        if (pr.id === prId) {
-          const statusField = role === 'HOD' ? 'hodStatus' : 'financeStatus';
-          const newStatus = status === 'Approved'
-            ? (role === 'Finance' ? 'APPROVED' : 'PENDING_FINANCE_APPROVAL')
-            : 'DECLINED';
-
-          return {
-            ...pr,
-            [statusField]: status,
-            status: newStatus,
-            urgencyLevel: finalizationData?.priority || pr.urgencyLevel,
-            paymentTerms: finalizationData?.paymentTerms,
-            supplierDetails: finalizationData?.supplierDetails,
-            expectedDeliveryDate: finalizationData?.expectedDeliveryDate,
-            budgetApproval: finalizationData?.budgetApproval,
-            history: [
-              ...(pr.history || []),
-              {
-                status: `${role} ${status}`,
-                date: new Date(),
-                by: user?.email,
-                transactionId: pr.transactionId,
-                action: status === 'Approved' ? (role === 'HOD' ? 'HOD_FINALIZE' : 'FINANCE_APPROVE') : 'DECLINE_PR',
-                comments: finalizationData?.comments,
-                riskAssessment: finalizationData?.riskAssessment,
-                complianceNotes: finalizationData?.complianceNotes,
-                alternativeOptions: finalizationData?.alternativeOptions
-              }
-            ]
-          };
-        }
-        return pr;
+    } catch (error: any) {
+      console.error('❌ Error splitting PR:', error);
+      toast({
+        title: "Split failed",
+        description: error.message || "Failed to split the purchase requisition.",
+        variant: "destructive"
       });
-
-      localStorage.setItem('purchaseRequisitions', JSON.stringify(updatedPRs));
-      loadPurchaseRequisitions();
     }
   };
 
@@ -215,42 +284,41 @@ const Dashboard = () => {
       return;
     }
 
-    // Clear dashboard view but keep original data for stats and history
-    const clearedCount = myPurchaseRequisitions.length;
-    setMyPurchaseRequisitions([]); // Clear dashboard display only
+    setDashboardCleared(true);
 
     toast({
       title: "Dashboard Cleared",
-      description: `Cleared ${clearedCount} PRs from dashboard view. All data and stats preserved.`
+      description: `Cleared ${myPurchaseRequisitions.length} PRs from dashboard view. All data is saved in the system.`
     });
   };
+
+  const displayedPRs = dashboardCleared ? [] : myPurchaseRequisitions;
 
   return (
     <Layout title={getPageTitle()}>
       <div className="space-y-8">
-        {/* Dashboard Stats at Top - Uses original data, not dashboard display */}
+        {/* Dashboard Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Total Submitted</h3>
-            <p className="text-3xl font-bold text-blue-600">{myOriginalPRs.length}</p>
+            <p className="text-3xl font-bold text-blue-600">{myPurchaseRequisitions.length}</p>
           </div>
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Approved</h3>
             <p className="text-3xl font-bold text-green-600">
-              {myOriginalPRs.filter(pr => pr.financeStatus === 'Approved').length}
+              {myPurchaseRequisitions.filter(pr => pr.financeStatus === 'Approved').length}
             </p>
           </div>
           <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Pending</h3>
             <p className="text-3xl font-bold text-orange-600">
-              {myOriginalPRs.filter(pr => pr.financeStatus === 'Pending').length}
+              {myPurchaseRequisitions.filter(pr => pr.financeStatus === 'Pending').length}
             </p>
           </div>
         </div>
 
         {/* Enhanced Action Buttons */}
         <div className="flex flex-wrap gap-4 animate-fade-in">
-          {/* Analytics Button - All Users */}
           <Button
             onClick={() => navigate('/analytics')}
             className="flex items-center gap-2 btn-shimmer hover-lift premium-shadow"
@@ -259,7 +327,6 @@ const Dashboard = () => {
             Procurement Analytics
           </Button>
 
-          {/* Admin Portal Button - Admin/SuperUser Only */}
           {(userRole === 'Admin' || userRole === 'SuperUser') && (
             <Button
               onClick={() => navigate(userRole === 'SuperUser' ? '/super-admin' : '/admin/portal')}
@@ -270,7 +337,17 @@ const Dashboard = () => {
             </Button>
           )}
 
-          {/* New Purchase Requisition Button - All Users */}
+          {userRole === 'Finance' && (
+            <Button
+              onClick={() => setShowSupplierMgmt(!showSupplierMgmt)}
+              variant={showSupplierMgmt ? 'default' : 'outline'}
+              className="flex items-center gap-2 hover-lift"
+            >
+              <Package className="w-4 h-4" />
+              {showSupplierMgmt ? 'Back to Dashboard' : 'Manage Suppliers'}
+            </Button>
+          )}
+
           <Dialog open={isNewPROpen} onOpenChange={setIsNewPROpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="flex items-center gap-2 hover-lift animate-glow">
@@ -286,18 +363,15 @@ const Dashboard = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Pending Employee PRs Button - HOD Only */}
-          {userRole === 'HOD' && (
+          {userRole === 'HOD' && pendingEmployeePRs.length > 0 && (
             <Dialog open={isPendingPRsOpen} onOpenChange={setIsPendingPRsOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2 btn-shimmer hover-lift premium-shadow">
                   <Clock className="w-4 h-4" />
                   Pending Employee PRs
-                  {pendingEmployeePRs.length > 0 && (
-                    <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full px-2 py-0.5 text-xs animate-pulse">
-                      {pendingEmployeePRs.length}
-                    </span>
-                  )}
+                  <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full px-2 py-0.5 text-xs animate-pulse">
+                    {pendingEmployeePRs.length}
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto glass-card">
@@ -311,25 +385,22 @@ const Dashboard = () => {
                   actionRole="HOD"
                   onFinalize={handleHODFinalize}
                   onSplit={handleSplitPR}
-                  onDecline={handleHODDecline}
+                  onDialogOpenChange={setHasOpenDialog}
                   title=""
                 />
               </DialogContent>
             </Dialog>
           )}
 
-          {/* PRs for Final Approval Button - Finance Only */}
-          {userRole === 'Finance' && (
+          {userRole === 'Finance' && financeApprovalPRs.length > 0 && (
             <Dialog open={isFinancePRsOpen} onOpenChange={setIsFinancePRsOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2 btn-shimmer hover-lift premium-shadow">
                   <CheckCircle className="w-4 h-4" />
-                  Purchase Requisitions For Final Approval
-                  {financeApprovalPRs.length > 0 && (
-                    <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full px-2 py-0.5 text-xs animate-pulse">
-                      {financeApprovalPRs.length}
-                    </span>
-                  )}
+                  PRs For Final Approval
+                  <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full px-2 py-0.5 text-xs animate-pulse">
+                    {financeApprovalPRs.length}
+                  </span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto glass-card">
@@ -343,14 +414,13 @@ const Dashboard = () => {
                   actionRole="Finance"
                   onFinalize={handleFinanceFinalize}
                   onSplit={handleSplitPR}
-                  onDecline={handleFinanceDecline}
+                  onDialogOpenChange={setHasOpenDialog}
                   title=""
                 />
               </DialogContent>
             </Dialog>
           )}
 
-          {/* Clear Dashboard Button - All Users */}
           <Button
             onClick={handleClearDashboard}
             variant="outline"
@@ -360,8 +430,7 @@ const Dashboard = () => {
             Clear Dashboard
           </Button>
 
-          {/* Refresh Dashboard Button - All Users */}
-          {myPurchaseRequisitions.length === 0 && (
+          {displayedPRs.length === 0 && myPurchaseRequisitions.length === 0 && (
             <Button
               onClick={loadPurchaseRequisitions}
               variant="outline"
@@ -373,13 +442,20 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Main Content - My Purchase Requisitions */}
-        <div className="glass-card hover-glow premium-shadow-lg animate-fade-in-up">
-          <PurchaseRequisitionTable
-            purchaseRequisitions={myPurchaseRequisitions}
-            title="My Purchase Requisitions"
-          />
-        </div>
+        {showSupplierMgmt ? (
+          <SupplierManagement />
+        ) : (
+          <>
+            {/* Main Content - My Purchase Requisitions */}
+            <div className="glass-card hover-glow premium-shadow-lg animate-fade-in-up">
+              <PurchaseRequisitionTable
+                purchaseRequisitions={displayedPRs}
+                onDialogOpenChange={setHasOpenDialog}
+                title="My Purchase Requisitions"
+              />
+            </div>
+          </>
+        )}
       </div>
     </Layout>
   );

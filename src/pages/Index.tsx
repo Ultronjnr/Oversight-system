@@ -1,4 +1,4 @@
-
+import React from 'react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,26 +9,42 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Set a safety timeout to prevent infinite loading
+    const safetyTimeout = setTimeout(() => {
+      if (!user) {
+        navigate('/login', { replace: true });
+      }
+    }, 5000);
+
     if (!isLoading) {
+      clearTimeout(safetyTimeout);
       if (user) {
         // Redirect based on user role
         switch (user.role) {
           case 'Employee':
-            navigate('/employee/portal');
+            navigate('/employee/portal', { replace: true });
             break;
           case 'HOD':
-            navigate('/hod/portal');
+            navigate('/hod/portal', { replace: true });
             break;
           case 'Finance':
-            navigate('/finance/portal');
+            navigate('/finance/portal', { replace: true });
+            break;
+          case 'Admin':
+            navigate('/admin/portal', { replace: true });
+            break;
+          case 'SuperUser':
+            navigate('/super-admin', { replace: true });
             break;
           default:
-            navigate('/login');
+            navigate('/login', { replace: true });
         }
       } else {
-        navigate('/login');
+        navigate('/login', { replace: true });
       }
     }
+
+    return () => clearTimeout(safetyTimeout);
   }, [user, isLoading, navigate]);
 
   if (isLoading) {

@@ -83,6 +83,15 @@ const Dashboard = () => {
 
   const handleSubmitPR = async (newPR: any) => {
     try {
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your user profile is not properly configured with an organization. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const routedPR = {
         ...newPR,
         requestedBy: user?.id,
@@ -95,7 +104,7 @@ const Dashboard = () => {
         status: 'PENDING_HOD_APPROVAL'
       };
 
-      console.log('📝 Submitting PR:', { transactionId: routedPR.transactionId, userRole });
+      console.log('📝 Submitting PR:', { transactionId: routedPR.transactionId, userRole, organizationId: user?.organizationId });
       const savedPR = await prService.createPurchaseRequisition(routedPR);
 
       if (savedPR) {
@@ -118,11 +127,11 @@ const Dashboard = () => {
           description: `Your PR (${routedPR.transactionId}) has been submitted for approval.`,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting PR:', error);
       toast({
         title: "Error",
-        description: "Failed to submit purchase requisition.",
+        description: error.message || "Failed to submit purchase requisition.",
         variant: "destructive"
       });
     }

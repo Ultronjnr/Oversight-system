@@ -587,15 +587,26 @@ export async function splitRequisition(
     }
 
     // Calculate remaining items and amount
+    // Get the indices of items that are being split
     const splitItemIndices = new Set<number>();
     splits.forEach(split => {
-      originalPR.items.forEach((item: any, idx: number) => {
+      if (split.originalItemIndex !== undefined) {
+        // If indices were provided, use them
+        splitItemIndices.add(split.originalItemIndex);
+      } else {
+        // Fallback: match items by description and quantity
         split.items.forEach((splitItem: any) => {
-          if (splitItem.description === item.description && splitItem.quantity === item.quantity) {
-            splitItemIndices.add(idx);
-          }
+          originalPR.items.forEach((item: any, idx: number) => {
+            if (
+              item.description === splitItem.description &&
+              item.quantity === splitItem.quantity &&
+              parseFloat(item.unitPrice) === parseFloat(splitItem.unitPrice)
+            ) {
+              splitItemIndices.add(idx);
+            }
+          });
         });
-      });
+      }
     });
 
     const remainingItems = originalPR.items.filter((_: any, idx: number) => !splitItemIndices.has(idx));

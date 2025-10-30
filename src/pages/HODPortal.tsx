@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import PurchaseRequisitionForm from '../components/PurchaseRequisitionForm';
 import PRListView from '../components/PRListView';

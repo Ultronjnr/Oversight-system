@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Check, Download, Eye, Split, AlertCircle } from 'lucide-react';
 import PRHistory from './PRHistory';
 import FinalizationModal from './FinalizationModal';
-import SplitPRModal from './SplitPRModal';
+import SimpleItemSplitModal from './SimpleItemSplitModal';
 import DocumentViewer from './DocumentViewer';
 
 interface PRListViewProps {

@@ -234,6 +234,7 @@ const FinancePortal = () => {
                 actionRole="Finance"
                 onFinalize={handleFinanceApprove}
                 onSplit={handleSplitPR}
+                onDialogOpenChange={setHasOpenDialog}
                 title="Purchase Requisitions for Final Approval"
               />
             )}

@@ -69,6 +69,15 @@ const FinancePortal = () => {
 
   const handleSubmitPR = async (newPR: any) => {
     try {
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your user profile is not properly configured with an organization. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const routedPR = {
         ...newPR,
         requestedBy: user?.id,
@@ -82,7 +91,7 @@ const FinancePortal = () => {
       };
 
       const createdPR = await prService.createPurchaseRequisition(routedPR);
-      
+
       if (createdPR) {
         setMyPRs(prev => [...prev, createdPR]);
         toast({
@@ -90,11 +99,11 @@ const FinancePortal = () => {
           description: "Your PR has been submitted for approval.",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting PR:', error);
       toast({
         title: "Submission failed",
-        description: "Failed to submit PR.",
+        description: error?.message || "Failed to submit PR.",
         variant: "destructive",
       });
     }

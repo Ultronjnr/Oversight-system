@@ -18,6 +18,7 @@ interface PRListViewProps {
   actionRole?: 'HOD' | 'Finance';
   onFinalize?: (prId: string, data: any) => void;
   onSplit?: (prId: string, splitData: any) => void;
+  onDialogOpenChange?: (isOpen: boolean) => void;
   title: string;
 }
 
@@ -27,6 +28,7 @@ const PRListView = ({
   actionRole,
   onFinalize,
   onSplit,
+  onDialogOpenChange,
   title
 }: PRListViewProps) => {
   const [selectedPR, setSelectedPR] = useState<any | null>(purchaseRequisitions[0] || null);
@@ -35,6 +37,12 @@ const PRListView = ({
   const [isFinalizationOpen, setIsFinalizationOpen] = useState(false);
   const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [approvedPRs, setApprovedPRs] = useState<Set<string>>(new Set());
+
+  // Notify parent when any dialog state changes
+  React.useEffect(() => {
+    const hasOpenDialog = isFinalizationOpen || isSplitOpen;
+    onDialogOpenChange?.(hasOpenDialog);
+  }, [isFinalizationOpen, isSplitOpen, onDialogOpenChange]);
 
   const filteredPRs = purchaseRequisitions.filter(pr => {
     const matchesSearch = pr.transactionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||

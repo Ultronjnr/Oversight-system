@@ -228,36 +228,46 @@ const Dashboard = () => {
   const handleSplitPR = async (prId: string, splitData: any) => {
     try {
       const splitItems = splitData.splitPRs || splitData.splitTransactions || [];
-      
-      const originalPR = myPurchaseRequisitions.find(pr => pr.id === prId) || 
-                        pendingEmployeePRs.find(pr => pr.id === prId) ||
-                        financeApprovalPRs.find(pr => pr.id === prId);
 
-      if (originalPR) {
-        const updatedPR = {
-          ...originalPR,
-          ...splitData.originalUpdate,
-          updated_at: new Date().toISOString()
-        };
-
-        await prService.updatePRStatus(prId, undefined, undefined, updatedPR);
-        
-        for (const splitPR of splitItems) {
-          await prService.createPurchaseRequisition(splitPR);
-        }
-
-        await loadPurchaseRequisitions();
-
+      if (splitItems.length === 0) {
         toast({
-          title: "Transaction Split Successfully",
-          description: `Created ${splitItems.length} new transactions automatically.`
+          title: "No Items Selected",
+          description: "Please select at least one item to split.",
+          variant: "destructive"
         });
+        return;
       }
-    } catch (error) {
-      console.error('Error splitting PR:', error);
+
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your organization is not properly configured. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('📊 Splitting PR from Dashboard:', { prId, splitItems: splitItems.length, organizationId: user?.organizationId });
+
+      // Use the proper split service which handles organization_id correctly
+      await prService.splitRequisition(
+        prId,
+        splitItems,
+        user?.name || 'Unknown',
+        'Employee'
+      );
+
+      await loadPurchaseRequisitions();
+
+      toast({
+        title: "Transaction Split Successfully",
+        description: `Created ${splitItems.length} new PR${splitItems.length !== 1 ? 's' : ''}.`
+      });
+    } catch (error: any) {
+      console.error('❌ Error splitting PR:', error);
       toast({
         title: "Split failed",
-        description: "Failed to split the purchase requisition.",
+        description: error.message || "Failed to split the purchase requisition.",
         variant: "destructive"
       });
     }

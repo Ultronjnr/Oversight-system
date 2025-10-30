@@ -153,13 +153,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (userData && !userError) {
-        console.log('✅ User profile found:', { id: userData.id, role: userData.role });
+        console.log('✅ User profile found:', { id: userData.id, role: userData.role, organizationId: userData.organization_id });
         const normalized: User = {
           id: userData.id,
           email: userData.email,
           role: userData.role as User['role'],
           name: userData.name,
           department: userData.department,
+          organizationId: userData.organization_id,
           permissions: userData.permissions || [],
         };
         setUser(normalized);

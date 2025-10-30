@@ -310,7 +310,7 @@ const PRListView = ({
             onSplit={() => setIsSplitOpen(true)}
           />
 
-          <SplitPRModal
+          <SimpleItemSplitModal
             isOpen={isSplitOpen}
             onClose={() => setIsSplitOpen(false)}
             purchaseRequisition={selectedPR}

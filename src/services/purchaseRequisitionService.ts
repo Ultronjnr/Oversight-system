@@ -552,7 +552,7 @@ export async function splitRequisition(
           document_name: originalPR.document_name,
           document_type: originalPR.document_type,
           document_url: originalPR.document_url,
-          status: 'Draft',
+          status: 'PENDING_HOD_APPROVAL',
           hod_status: 'Pending',
           finance_status: 'Pending',
           total_amount: split.totalAmount,

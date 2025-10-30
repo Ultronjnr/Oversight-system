@@ -46,18 +46,28 @@ const EmployeePortal = () => {
 
   const handleSubmitPR = async (newPR: any) => {
     try {
+      if (!user?.organizationId) {
+        toast({
+          title: "Configuration Error",
+          description: "Your user profile is not properly configured with an organization. Please contact your administrator.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const routedPR = {
         ...newPR,
         requestedBy: user?.id,
         requestedByName: user?.name,
         requestedByRole: user?.role,
         requestedByDepartment: user?.department,
+        organizationId: user?.organizationId,
         hodStatus: 'Pending',
         financeStatus: 'Pending',
         status: 'PENDING_HOD_APPROVAL'
       };
 
-      console.log('📝 Submitting PR from EmployeePortal:', routedPR.transactionId);
+      console.log('📝 Submitting PR from EmployeePortal:', { transactionId: routedPR.transactionId, organizationId: user?.organizationId });
       const createdPR = await prService.createPurchaseRequisition(routedPR);
 
       if (createdPR) {

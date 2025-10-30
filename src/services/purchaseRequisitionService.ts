@@ -586,11 +586,28 @@ export async function splitRequisition(
       }
     }
 
-    // Update original PR to mark as split
+    // Calculate remaining items and amount
+    const splitItemIndices = new Set<number>();
+    splits.forEach(split => {
+      originalPR.items.forEach((item: any, idx: number) => {
+        split.items.forEach((splitItem: any) => {
+          if (splitItem.description === item.description && splitItem.quantity === item.quantity) {
+            splitItemIndices.add(idx);
+          }
+        });
+      });
+    });
+
+    const remainingItems = originalPR.items.filter((_: any, idx: number) => !splitItemIndices.has(idx));
+    const remainingAmount = remainingItems.reduce((sum: number, item: any) => sum + (parseFloat(item.totalPrice) || 0), 0);
+
+    // Update original PR with remaining items and mark as split
     const { error: updateError } = await supabase
       .from('purchase_requisitions')
       .update({
         status: 'Split',
+        items: remainingItems,
+        total_amount: remainingAmount,
         history: [
           ...originalPR.history,
           {
@@ -598,7 +615,9 @@ export async function splitRequisition(
             by: splitterName,
             role: splitterRole,
             timestamp,
-            splitInto: splitIds
+            splitInto: splitIds,
+            remainingAmount: remainingAmount,
+            itemsSplit: splits.length
           }
         ]
       })

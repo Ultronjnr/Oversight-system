@@ -530,17 +530,18 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="supplierPreference">Preferred Supplier</Label>
-              <Select value={formData.supplierPreference} onValueChange={(supplierId) => {
+              <Select value={formData.supplierId} onValueChange={(supplierId) => {
                 const supplier = suppliers.find(s => s.id === supplierId);
                 if (supplier) {
                   setFormData({
                     ...formData,
+                    supplierId: supplier.id,
                     supplierPreference: supplier.name,
                     deliveryLocation: supplier.address || formData.deliveryLocation
                   });
                 }
               }}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white">
                   <SelectValue placeholder="Select a supplier or type manually..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -553,6 +554,9 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
                   )}
                 </SelectContent>
               </Select>
+              {formData.supplierPreference && (
+                <p className="text-sm font-medium text-blue-600 mt-1">✓ Selected: {formData.supplierPreference}</p>
+              )}
             </div>
 
             <div className="space-y-2">

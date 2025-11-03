@@ -149,7 +149,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
     if (!fileUrl) return null;
 
     // For images, show a small thumbnail
-    if (fileType?.startsWith('image/')) {
+    if (isImage()) {
       return (
         <img
           src={fileUrl}

@@ -244,7 +244,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
             className="text-blue-600 hover:text-blue-800 p-0 h-10 w-10 flex items-center justify-center"
             title="Preview document"
           >
-            {fileUrl && fileType?.startsWith('image/') && !imageLoadFailed ? getThumbnail() : getFileIcon()}
+            {fileUrl && isImage() && !imageLoadFailed ? getThumbnail() : getFileIcon()}
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

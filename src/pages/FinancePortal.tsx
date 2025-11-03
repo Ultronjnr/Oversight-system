@@ -20,19 +20,20 @@ const FinancePortal = () => {
 
   useEffect(() => {
     if (user?.id) {
+      console.log('💰 FinancePortal: Loading purchase requisitions...');
       loadPurchaseRequisitions();
 
-      // Auto-refresh Finance portal every 10 seconds, but skip if dialog is open
+      // Auto-refresh Finance portal every 15 seconds, but skip if dialog is open
       const refreshInterval = setInterval(() => {
         if (!hasOpenDialog) {
-          console.log('🔄 Auto-refreshing Finance portal...');
+          console.log('🔄 FinancePortal: Auto-refreshing...');
           loadPurchaseRequisitions();
         }
-      }, 10000);
+      }, 15000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user, hasOpenDialog]);
+  }, [user?.id, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

@@ -269,7 +269,7 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
                   </div>
                 </div>
               )}
-              {!downloadError && thumbnailLoaded && fileType?.startsWith('image/') && (
+              {!downloadError && thumbnailLoaded && isImage() && (
                 <div className="flex items-center text-green-600 text-sm">
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Image loaded successfully

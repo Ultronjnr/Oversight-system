@@ -54,11 +54,16 @@ const Layout = ({ children, title }: LayoutProps) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               {/* Logo with Animation */}
-              <div className="flex items-center space-x-2 group transform group-hover:scale-110 transition-transform duration-300">
+              <div className="flex items-center group transform group-hover:scale-110 transition-transform duration-300">
                 <img
                   src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
                   alt="Oversight Logo"
-                  className="h-14 w-auto"
+                  style={{
+                    height: '147px',
+                    marginRight: '-1px',
+                    paddingRight: '2px',
+                    width: 'auto'
+                  }}
                 />
               </div>
               

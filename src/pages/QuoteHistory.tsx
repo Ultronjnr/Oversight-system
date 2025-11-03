@@ -87,7 +87,53 @@ const QuoteHistory = () => {
     setSelectedQuote(quote);
   };
 
-  const handleDownloadQuote = (quote: Quote) => {
+  const handleDownloadQuote = async (quote: Quote) => {
+    try {
+      // Download the quote as CSV
+      QuoteService.downloadQuoteAsCSV(quote);
+
+      toast({
+        title: "Download Successful",
+        description: `Quote for "${quote.item}" downloaded as CSV.`,
+      });
+
+      // If there's an attached document, offer to download it too
+      if (quote.documentUrl) {
+        setTimeout(() => {
+          toast({
+            title: "Document Available",
+            description: "This quote also has an attached document. Click the document icon to download it.",
+          });
+        }, 1000);
+      }
+    } catch (error: any) {
+      console.error('Download failed:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Failed to download quote. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDownloadDocument = async (quote: Quote) => {
+    try {
+      await QuoteService.downloadQuoteDocument(quote);
+      toast({
+        title: "Download Successful",
+        description: `Document "${quote.documentName}" downloaded.`,
+      });
+    } catch (error: any) {
+      console.error('Document download failed:', error);
+      toast({
+        title: "Download Failed",
+        description: error.message || "Failed to download document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const oldHandleDownloadQuote = (quote: Quote) => {
     // Create a detailed quote report
     const quoteDetails = {
       item: quote.item,

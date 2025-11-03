@@ -68,14 +68,8 @@ const PurchaseRequisitionHistory = () => {
   return (
     <Layout title="Purchase Requisition History">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold mb-2">Purchase Requisition History</h2>
-            <p className="text-gray-600">
-              View all purchase requisitions {user?.role === 'Employee' ? 'you have submitted' : user?.role === 'HOD' ? 'in your department' : 'in your organization'}
-            </p>
-          </div>
+        {/* Header - Refresh button only (PRListView provides the title) */}
+        <div className="flex justify-end">
           <Button
             onClick={handleRefresh}
             disabled={isRefreshing}

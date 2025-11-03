@@ -51,7 +51,7 @@ const Layout = ({ children, title }: LayoutProps) => {
       {/* Premium Header with Glassmorphism */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-blue-100/50 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center" style={{ height: '160px' }}>
+          <div className="flex justify-between items-center" style={{ height: '77px' }}>
             <div className="flex items-center space-x-8">
               {/* Logo with Animation */}
               <div className="flex items-center group transform group-hover:scale-110 transition-transform duration-300">
@@ -59,7 +59,7 @@ const Layout = ({ children, title }: LayoutProps) => {
                   src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
                   alt="Oversight Logo"
                   style={{
-                    height: '147px',
+                    height: '119px',
                     marginRight: '-1px',
                     paddingRight: '2px',
                     width: 'auto'

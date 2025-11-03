@@ -400,4 +400,66 @@ export class QuoteService {
     if (quote.hodStatus === 'Approved' && quote.financeStatus === 'Pending') return 'Finance Review';
     return 'Pending';
   }
+
+  /**
+   * Download quote as CSV file
+   */
+  static downloadQuoteAsCSV(quote: Quote): void {
+    try {
+      const csvContent = this.generateQuoteReport(quote);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `quote_${quote.id || 'export'}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      console.log('✅ Quote downloaded successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to download quote:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Download quote document (if attached)
+   */
+  static async downloadQuoteDocument(quote: Quote): Promise<void> {
+    try {
+      if (!quote.documentUrl) {
+        throw new Error('No document attached to this quote');
+      }
+
+      console.log('📥 Downloading quote document:', quote.documentName);
+
+      const response = await fetch(quote.documentUrl, {
+        mode: 'cors',
+        headers: {
+          'Accept': quote.documentType || '*/*'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status} ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', quote.documentName || 'quote-document');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Quote document downloaded successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to download quote document:', error.message);
+      throw error;
+    }
+  }
 }

@@ -102,6 +102,63 @@ const PRListView = ({
     return `ZAR ${(amount || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2 })}`;
   };
 
+  const downloadPRAsCSV = (pr: any) => {
+    try {
+      const headers = ['Field', 'Value'];
+      const rows = [
+        ['Transaction ID', pr.transactionId || ''],
+        ['Date', pr.requestDate ? new Date(pr.requestDate).toLocaleDateString() : ''],
+        ['Amount', formatCurrency(pr.totalAmount)],
+        ['Department', pr.requestedByDepartment || ''],
+        ['Requested By', pr.requestedByName || ''],
+        ['Urgency', pr.urgencyLevel || ''],
+        ['Status', pr.status || ''],
+        ['HOD Status', pr.hodStatus || ''],
+        ['Finance Status', pr.financeStatus || '']
+      ];
+
+      if (pr.items && pr.items.length > 0) {
+        rows.push(['', '']);
+        rows.push(['Items', '']);
+        pr.items.forEach((item: any) => {
+          rows.push([
+            item.description,
+            `Qty: ${item.quantity} × ${formatCurrency(parseFloat(item.unitPrice))} = ${formatCurrency(item.totalPrice)}`
+          ]);
+        });
+      }
+
+      if (pr.history && pr.history.length > 0) {
+        rows.push(['', '']);
+        rows.push(['Approval History', '']);
+        pr.history.forEach((entry: any) => {
+          rows.push([
+            entry.action || 'Action',
+            `${entry.by} - ${entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ''}`
+          ]);
+        });
+      }
+
+      const csvContent = [headers, ...rows].map(row =>
+        row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `PR_${pr.transactionId}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      console.log('✅ PR downloaded successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to download PR:', error);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left Panel - PR List */}

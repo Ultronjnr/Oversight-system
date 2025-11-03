@@ -315,11 +315,11 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Header Information - Dates with Enhanced UX */}
+          {/* Header Information - Dates */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="requestDate" className="flex items-center text-sm font-medium">
-                <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+              <Label htmlFor="requestDate" className="flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
                 Request Date
               </Label>
               <Input
@@ -327,42 +327,36 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
                 type="date"
                 value={formData.requestDate}
                 onChange={(e) => setFormData({ ...formData, requestDate: e.target.value })}
-                className="bg-blue-50 border-blue-200 focus:bg-white focus:border-blue-500 h-11"
                 required
               />
-              <p className="text-xs text-gray-500">Today's date</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dueDate" className="flex items-center text-sm font-medium">
-                <Clock className="h-4 w-4 mr-2 text-amber-600" />
-                HOD Approval Due Date <span className="text-red-500 ml-1">*</span>
+              <Label htmlFor="dueDate" className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                Approval Due Date *
               </Label>
               <Input
                 id="dueDate"
                 type="date"
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                className="bg-amber-50 border-amber-200 focus:bg-white focus:border-amber-500 h-11"
                 required
               />
-              <p className="text-xs text-gray-500">When HOD should approve by</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentDueDate" className="flex items-center text-sm font-medium">
-                <Calculator className="h-4 w-4 mr-2 text-green-600" />
-                Payment Due Date <span className="text-red-500 ml-1">*</span>
+              <Label htmlFor="paymentDueDate" className="flex items-center">
+                <Calculator className="h-4 w-4 mr-2" />
+                Payment Due Date *
               </Label>
               <Input
                 id="paymentDueDate"
                 type="date"
                 value={formData.paymentDueDate}
                 onChange={(e) => setFormData({ ...formData, paymentDueDate: e.target.value })}
-                className="bg-green-50 border-green-200 focus:bg-white focus:border-green-500 h-11"
                 required
               />
-              <p className="text-xs text-gray-500">Payment terms deadline</p>
             </div>
           </div>
 

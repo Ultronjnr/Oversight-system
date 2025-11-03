@@ -126,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.removeItem('user');
           }
         }
+        return false;
       });
       unsubscribe = data.subscription?.unsubscribe || null;
     } catch (error) {

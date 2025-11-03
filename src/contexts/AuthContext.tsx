@@ -38,6 +38,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const init = async () => {
       try {
+        // 1. First, try to restore from localStorage (fast path)
+        const cachedUser = localStorage.getItem('user');
+        if (cachedUser && mounted) {
+          try {
+            const parsedUser = JSON.parse(cachedUser);
+            setUser(parsedUser);
+            console.log('✅ User restored from cache:', parsedUser.id);
+          } catch (parseError) {
+            console.warn('Failed to parse cached user:', parseError);
+          }
+        }
+
+        // 2. Then verify session is still valid
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
 
@@ -63,6 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(normalized);
             localStorage.setItem('user', JSON.stringify(normalized));
           }
+        } else if (mounted && cachedUser) {
+          // Session expired but we had cached data, clear it
+          setUser(null);
+          localStorage.removeItem('user');
         }
       } catch (error) {
         console.warn('Auth initialization error:', error);

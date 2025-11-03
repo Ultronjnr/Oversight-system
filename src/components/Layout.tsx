@@ -58,7 +58,7 @@ const Layout = ({ children, title }: LayoutProps) => {
                 <img
                   src="https://cdn.builder.io/api/v1/image/assets%2F75cb47fbaca646419953eca36b07cbc8%2Fefed5ff2c1664f0eb97bcf83de29ac4b?format=webp&width=800"
                   alt="Oversight Logo"
-                  className="h-8 w-auto"
+                  className="h-14 w-auto"
                 />
               </div>
               

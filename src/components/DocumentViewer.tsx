@@ -195,17 +195,16 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
 
     if (fileType === 'application/pdf') {
       return (
-        <div className="flex items-center justify-center h-96 bg-gradient-to-br from-red-50 to-orange-50 rounded-md p-4">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 bg-red-100 rounded-full mb-4">
-              <FileText className="h-8 w-8 text-red-600" />
-            </div>
-            <p className="text-lg font-semibold text-gray-800 mb-2">{fileName}</p>
-            <p className="text-gray-600 mb-4">PDF Document</p>
-            <p className="text-sm text-gray-500">
-              Click Download to view the full document
-            </p>
-          </div>
+        <div className="flex justify-center items-center bg-gray-50 rounded-md p-4 min-h-[500px]">
+          <iframe
+            src={fileUrl}
+            className="w-full h-[500px] border-0 rounded-md shadow-md"
+            title={fileName}
+            onError={(e) => {
+              console.error('Error loading PDF in iframe:', e);
+              setDownloadError('Failed to load PDF viewer.');
+            }}
+          ></iframe>
         </div>
       );
     }

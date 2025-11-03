@@ -333,24 +333,35 @@ const PRListView = ({
               )}
 
               {/* Actions */}
-              {showActions && actionRole && !approvedPRs.has(selectedPR.id) && (
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button
-                    onClick={() => setIsSplitOpen(true)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Split className="h-4 w-4" />
-                    Split
-                  </Button>
-                  <Button
-                    onClick={() => setIsFinalizationOpen(true)}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                  >
-                    Finalize
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-2 pt-4 border-t flex-wrap">
+                <Button
+                  onClick={() => downloadPRAsCSV(selectedPR)}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+                {showActions && actionRole && !approvedPRs.has(selectedPR.id) && (
+                  <>
+                    <Button
+                      onClick={() => setIsSplitOpen(true)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Split className="h-4 w-4" />
+                      Split
+                    </Button>
+                    <Button
+                      onClick={() => setIsFinalizationOpen(true)}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      Finalize
+                    </Button>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
         ) : (

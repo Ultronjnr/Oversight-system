@@ -244,11 +244,22 @@ const PRListView = ({
                   <p className="text-sm text-gray-600 mt-1">{selectedPR.transactionId}</p>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => downloadPRAsCSV(selectedPR)}
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
                   {selectedPR.documentUrl && (
-                    <Button size="sm" variant="outline" className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Download
-                    </Button>
+                    <DocumentViewer
+                      fileName={selectedPR.documentName || 'Document'}
+                      fileUrl={selectedPR.documentUrl}
+                      fileType={selectedPR.documentType}
+                      quoteId={selectedPR.id}
+                    />
                   )}
                 </div>
               </div>

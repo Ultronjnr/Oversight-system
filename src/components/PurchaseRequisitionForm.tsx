@@ -40,6 +40,7 @@ const PurchaseRequisitionForm = ({ onSubmit }: PurchaseRequisitionFormProps) => 
     department: user?.department || '',
     budgetCode: '',
     projectCode: '',
+    supplierId: '',
     supplierPreference: '',
     deliveryLocation: '',
     specialInstructions: '',

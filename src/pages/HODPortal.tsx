@@ -18,19 +18,20 @@ const HODPortal = () => {
 
   useEffect(() => {
     if (user?.id) {
+      console.log('📋 HODPortal: Loading purchase requisitions...');
       loadPurchaseRequisitions();
 
-      // Auto-refresh HOD portal every 10 seconds, but skip if dialog is open
+      // Auto-refresh HOD portal every 15 seconds, but skip if dialog is open
       const refreshInterval = setInterval(() => {
         if (!hasOpenDialog) {
-          console.log('🔄 Auto-refreshing HOD portal...');
+          console.log('🔄 HODPortal: Auto-refreshing...');
           loadPurchaseRequisitions();
         }
-      }, 10000);
+      }, 15000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user, hasOpenDialog]);
+  }, [user?.id, user?.department, hasOpenDialog]);
 
   const loadPurchaseRequisitions = async () => {
     try {

@@ -182,14 +182,14 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
       );
     }
 
-    if (fileType?.startsWith('image/')) {
+    if (isImage()) {
       return (
         <div className="flex justify-center items-center bg-gray-50 rounded-md p-4 min-h-[400px]">
           {!imageLoadFailed ? (
             <img
               src={fileUrl}
               alt={fileName}
-              className="max-w-full max-h-[500px] object-contain rounded shadow-md"
+              className="max-w-full max-h-[600px] object-contain rounded shadow-md"
               onError={() => setImageLoadFailed(true)}
               onLoad={() => setThumbnailLoaded(true)}
             />
@@ -204,18 +204,21 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
       );
     }
 
-    if (fileType === 'application/pdf') {
+    if (isPDF()) {
       return (
-        <div className="flex justify-center items-center bg-gray-50 rounded-md p-4 min-h-[500px]">
-          <iframe
-            src={fileUrl}
-            className="w-full h-[500px] border-0 rounded-md shadow-md"
-            title={fileName}
-            onError={(e) => {
-              console.error('Error loading PDF in iframe:', e);
-              setDownloadError('Failed to load PDF viewer.');
-            }}
-          ></iframe>
+        <div className="flex flex-col bg-gray-50 rounded-md p-4 min-h-[600px]">
+          <div className="flex-1 flex items-center justify-center bg-white rounded-md border border-gray-200 overflow-hidden">
+            <iframe
+              src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+              className="w-full h-[600px] border-0"
+              title={fileName}
+              allow="fullscreen"
+              onError={(e) => {
+                console.error('Error loading PDF in iframe:', e);
+                setDownloadError('PDF viewer could not load. The file will open when you click Download.');
+              }}
+            ></iframe>
+          </div>
         </div>
       );
     }

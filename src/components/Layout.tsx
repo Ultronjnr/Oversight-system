@@ -51,7 +51,7 @@ const Layout = ({ children, title }: LayoutProps) => {
       {/* Premium Header with Glassmorphism */}
       <header className="bg-white/80 backdrop-blur-lg border-b border-blue-100/50 shadow-lg sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex justify-between items-center" style={{ height: '160px' }}>
             <div className="flex items-center space-x-8">
               {/* Logo with Animation */}
               <div className="flex items-center group transform group-hover:scale-110 transition-transform duration-300">

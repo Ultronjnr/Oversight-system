@@ -128,9 +128,20 @@ const DocumentViewer = ({ fileName, fileUrl, fileType, quoteId }: DocumentViewer
     }
   };
 
+  const isPDF = () => {
+    return fileType?.toLowerCase().includes('pdf') ||
+           fileName?.toLowerCase().endsWith('.pdf') ||
+           fileType === 'application/pdf';
+  };
+
+  const isImage = () => {
+    return fileType?.startsWith('image/') ||
+           /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+  };
+
   const getFileIcon = () => {
-    if (fileType?.startsWith('image/')) return <ImageIcon className="h-4 w-4" />;
-    if (fileType === 'application/pdf') return <FileText className="h-4 w-4" />;
+    if (isImage()) return <ImageIcon className="h-4 w-4" />;
+    if (isPDF()) return <FileText className="h-4 w-4" />;
     return <FileIcon className="h-4 w-4" />;
   };
 

@@ -38,22 +38,19 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user?.id) {
-      console.log('🏠 Dashboard: Loading purchase requisitions...');
-      // Reset dashboard cleared state when component mounts/remounts
-      setDashboardCleared(false);
       loadPurchaseRequisitions();
 
-      // Auto-refresh dashboard every 15 seconds, but skip if any dialog is open
+      // Auto-refresh dashboard every 10 seconds, but skip if any dialog is open
       const refreshInterval = setInterval(() => {
         if (!hasOpenDialog && !isPendingPRsOpen && !isFinancePRsOpen) {
-          console.log('🔄 Dashboard: Auto-refreshing...');
+          console.log('🔄 Auto-refreshing dashboard...');
           loadPurchaseRequisitions();
         }
-      }, 15000);
+      }, 10000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [user, userRole, hasOpenDialog, isPendingPRsOpen, isFinancePRsOpen]);
+  }, [user?.id, userRole, hasOpenDialog, isPendingPRsOpen, isFinancePRsOpen]);
 
   const loadPurchaseRequisitions = async () => {
     try {

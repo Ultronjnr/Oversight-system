@@ -1,7 +1,7 @@
 [build]
   command = "npm run build"
-  functions = "netlify/functions"
   publish = "dist"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18.20.3"
@@ -11,6 +11,11 @@
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
+[[redirects]]
+  from = "/lander"
+  to = "/"
+  status = 301
 
 [[redirects]]
   from = "/*"
@@ -24,8 +29,3 @@
   command = "npm run dev"
   port = 4182
   publish = "dist"
-
-
-
-
-

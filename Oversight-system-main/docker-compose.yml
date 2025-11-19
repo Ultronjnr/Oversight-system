@@ -1,0 +1,104 @@
+# Oversight Procurement Management System - Production Deployment
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: oversight_db
+    environment:
+      POSTGRES_DB: oversight_db
+      POSTGRES_USER: oversight_user
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - oversight_network
+
+  # Redis for Session Management and Caching
+  redis:
+    image: redis:7-alpine
+    container_name: oversight_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - oversight_network
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: oversight_backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://oversight_user:${DATABASE_PASSWORD}@database:5432/oversight_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${FRONTEND_URL}
+      PORT: 8000
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      - database
+      - redis
+    restart: unless-stopped
+    networks:
+      - oversight_network
+
+  # Frontend React Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        REACT_APP_API_URL: ${BACKEND_URL}/api
+        REACT_APP_VERSION: ${REACT_APP_VERSION}
+    container_name: oversight_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/ssl/certs
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - oversight_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: oversight_nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/ssl/certs
+      - ./uploads:/var/www/uploads
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - oversight_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  oversight_network:
+    driver: bridge

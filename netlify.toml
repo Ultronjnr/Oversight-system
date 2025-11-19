@@ -1,20 +1,14 @@
 # Netlify configuration for Oversight Procurement Management System
 
 [build]
-  # Build command - use bun instead of npm (project uses Bun package manager)
-  command = "bun install && bun run build"
-  # Publish directory - where Vite outputs the built files
   publish = "dist"
-  # Node version
-  node_version = "18"
-  # Install Python for any dependencies that might need it
-  functions = "netlify/functions"
+  command = "npm run build"
 
-[build.environment]
-  # Node environment for production build
-  NODE_ENV = "production"
+[[redirects]]
+  from = "/lander"
+  to = "/"
+  status = 301
 
-# Redirect rules for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"

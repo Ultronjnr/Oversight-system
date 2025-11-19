@@ -1,11 +1,11 @@
-<<<<<<< HEAD
 # Netlify configuration for Oversight Procurement Management System
 
-=======
->>>>>>> 4c21bf5862cc5231ed757214573a5f902ef5b6f3
 [build]
   publish = "dist"
   command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20.11.1"
 
 [[redirects]]
   from = "/lander"
@@ -16,7 +16,6 @@
   from = "/*"
   to = "/index.html"
   status = 200
-<<<<<<< HEAD
 
 # Security headers
 [[headers]]
@@ -56,5 +55,3 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-=======
->>>>>>> 4c21bf5862cc5231ed757214573a5f902ef5b6f3

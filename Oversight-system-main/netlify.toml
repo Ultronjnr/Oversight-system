@@ -1,15 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  functions = "netlify/functions"
-
-[build.environment]
-  NODE_VERSION = "18.20.3"
-  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/lander/*"
+  to = "/lander/index.html"
   status = 200
 
 [[redirects]]
@@ -17,10 +12,14 @@
   to = "/index.html"
   status = 200
 
-[functions]
-  node_bundler = "esbuild"
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
 
-[dev]
-  command = "npm run dev"
-  port = 4182
-  publish = "dist"
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
